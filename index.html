@@ -119,9 +119,52 @@ const KONFIGURATIONS_URLEN = [
 const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const labelNames = { "-2": "Vorgestern", "-1": "Gestern", "0": "Heute", "1": "Morgen", "2": "Übermorgen" };
 
+const AUSRICHTUNG_AZIMUT = {
+    "Nordnordost (NNO)": -157.5,
+    "Südsüdwest (SSW)": 22.5,
+    "Ost-Außenwand (Klinkerwand)": -90
+};
+
 // Hilfsfunktion zur Formatierung von Date-Objekten zu YYYY-MM-DD
 function formatDate(date) {
     return date.toISOString().split('T')[0];
+}
+
+function getDateRange() {
+    const heute = new Date();
+    const vonDatum = new Date(heute);
+    vonDatum.setDate(heute.getDate() - 2);
+    const bisDatum = new Date(heute);
+    bisDatum.setDate(heute.getDate() + 2);
+    return { vonDatum, bisDatum };
+}
+
+async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
+    const gruppen = config.string_aufteilung.flatMap(string => string.modul_gruppen_nach_neigung);
+    const profile = new Map();
+
+    await Promise.all(gruppen.map(async gruppe => {
+        const azimut = AUSRICHTUNG_AZIMUT[gruppe.ausrichtung];
+        if (azimut === undefined) throw new Error(`Unbekannte Ausrichtung: ${gruppe.ausrichtung}`);
+
+        const profileKey = `${gruppe.neigung_grad}:${azimut}`;
+        if (profile.has(profileKey)) return;
+
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=global_tilted_irradiance&tilt=${gruppe.neigung_grad}&azimuth=${azimut}&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Einstrahlungsprofil konnte nicht geladen werden (HTTP ${response.status})`);
+        const data = await response.json();
+        profile.set(profileKey, data.hourly);
+    }));
+
+    return profile;
+}
+
+function getDailyIrradiance(hourlyData, date) {
+    const day = date.slice(0, 10);
+    return hourlyData.time.reduce((summe, timestamp, index) =>
+        timestamp.startsWith(day) ? summe + (hourlyData.global_tilted_irradiance[index] || 0) : summe, 0
+    ) / 1000;
 }
 
 async function fetchAndCalculate() {
@@ -146,23 +189,23 @@ async function fetchAndCalculate() {
             throw new Error(`Anlagenkonfiguration konnte nicht geladen werden: ${letzterKonfigurationsfehler.message}`);
         }
 
-        const heute = new Date();
-        
-        // Zeitraum berechnen: 2 Tage zurück bis 2 Tage nach vorne
-        const vonDatum = new Date(); vonDatum.setDate(heute.getDate() - 2);
-        const bisDatum = new Date(); bisDatum.setDate(heute.getDate() + 2);
+        const { vonDatum, bisDatum } = getDateRange();
 
         // Open-Meteo API URL für Historie + Vorhersage kombiniert
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
 
-        const response = await fetch(url);
+        const [response, irradianceProfiles] = await Promise.all([
+            fetch(url),
+            fetchTiltedIrradiance(anlagenKonfiguration, vonDatum, bisDatum)
+        ]);
+        if (!response.ok) throw new Error(`Wetterdaten konnten nicht geladen werden (HTTP ${response.status})`);
         const data = await response.json();
 
         if (!data.daily) throw new Error("Fehler beim Laden der API-Daten");
 
         document.getElementById("anlage-subtitle").innerText =
             `Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp | Echtzeitdaten via Open-Meteo API`;
-        renderDashboard(data.daily, anlagenKonfiguration);
+        renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
     } catch (error) {
         document.getElementById("loading-text").innerText = "Fehler beim Laden der Live-Daten: " + error.message;
     }
@@ -176,7 +219,7 @@ function getWeatherSymbol(code) {
     return "☁️ Bewölkt";
 }
 
-function renderDashboard(dailyData, config) {
+function renderDashboard(dailyData, config, irradianceProfiles) {
     const grid = document.getElementById("dashboard-grid");
     grid.innerHTML = "";
 
@@ -190,17 +233,22 @@ function renderDashboard(dailyData, config) {
         
         // Wetter- und Strahlungsdaten aus der API auflösen
         const tempMax = dailyData.temperature_2m_max[i];
-        const radSum = dailyData.shortwave_radiation_sum[i] / 3.6; // Umrechnung von MJ/m² in kWh/m²
+        const radSum = dailyData.shortwave_radiation_sum[i] / 3.6; // Horizontale Globalstrahlung zur Information
         const weatherType = getWeatherSymbol(dailyData.weather_code[i]);
 
-        // String-Ertrag aus Modulgruppen und der installierten Modulleistung berechnen.
+        // Jede Modulgruppe wird mit ihrer eigenen geneigten Einstrahlung berechnet.
         const modulLeistung_kWp = config.system_steckbrief.module.leistung_pro_modul_w / 1000;
         const stringErtraege = config.string_aufteilung.map(string => {
             const gruppen = string.modul_gruppen_nach_neigung.map(gruppe => {
                 const leistung_kWp = gruppe.anzahl_module * modulLeistung_kWp;
+                const azimut = AUSRICHTUNG_AZIMUT[gruppe.ausrichtung];
+                const irradiance = getDailyIrradiance(
+                    irradianceProfiles.get(`${gruppe.neigung_grad}:${azimut}`),
+                    dailyData.time[i]
+                );
                 return {
                     ...gruppe,
-                    ertrag: radSum * leistung_kWp * SYSTEMVERLUSTFAKTOR
+                    ertrag: irradiance * leistung_kWp * SYSTEMVERLUSTFAKTOR
                 };
             });
             return {
