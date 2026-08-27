@@ -111,6 +111,10 @@ const LON = 10.0101;
 
 let anlagenKonfiguration;
 const SYSTEMVERLUSTFAKTOR = 0.85;
+const KONFIGURATIONS_URLEN = [
+    "./anlage.json",
+    "https://raw.githubusercontent.com/alizim/PV-Calculator/main/anlage.json"
+];
 
 const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const labelNames = { "-2": "Vorgestern", "-1": "Gestern", "0": "Heute", "1": "Morgen", "2": "Übermorgen" };
@@ -122,9 +126,25 @@ function formatDate(date) {
 
 async function fetchAndCalculate() {
     try {
-        const configResponse = await fetch("anlage.json");
-        if (!configResponse.ok) throw new Error("Anlagenkonfiguration konnte nicht geladen werden");
-        anlagenKonfiguration = await configResponse.json();
+        if (window.location.protocol === "file:") {
+            throw new Error("Bitte index.html über einen Webserver öffnen, damit anlage.json geladen werden kann");
+        }
+
+        let letzterKonfigurationsfehler;
+        for (const konfigurationsUrl of KONFIGURATIONS_URLEN) {
+            try {
+                const configUrl = new URL(konfigurationsUrl, document.baseURI);
+                const configResponse = await fetch(configUrl);
+                if (!configResponse.ok) throw new Error(`HTTP ${configResponse.status}`);
+                anlagenKonfiguration = await configResponse.json();
+                break;
+            } catch (error) {
+                letzterKonfigurationsfehler = error;
+            }
+        }
+        if (!anlagenKonfiguration) {
+            throw new Error(`Anlagenkonfiguration konnte nicht geladen werden: ${letzterKonfigurationsfehler.message}`);
+        }
 
         const heute = new Date();
         
