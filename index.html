@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live PV-Forecast Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f3f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-top: 5px solid #bdc3c7;
+            position: relative;
+        }
+        .card.today {
+            border-top-color: #f1c40f;
+            background-color: #fffdf2;
+        }
+        .date-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #34495e;
+        }
+        .day-tag {
+            display: inline-block;
+            font-size: 0.75em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+        .card.today .day-tag {
+            background: #f1c40f;
+            color: white;
+        }
+        .weather-info {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            margin-bottom: 15px;
+            border-left: 3px solid #3498db;
+        }
+        .results {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .result-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.95em;
+        }
+        .total-line {
+            font-weight: bold;
+            color: #27ae60;
+            border-top: 1px dashed #ddd;
+            padding-top: 6px;
+            margin-top: 6px;
+        }
+        .loading {
+            text-align: center;
+            font-size: 1.2em;
+            color: #7f8c8d;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>☀️ Live PV-Ertragsprognose & Historie</h1>
+    <div class="subtitle">Standort: Norderstedt | Echtzeitdaten via Open-Meteo API</div>
+    
+    <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
+    <div class="grid" id="dashboard-grid" style="display: none;"></div>
+</div>
+
+<script>
+// Standortsdaten für Norderstedt
+const LAT = 53.7065;
+const LON = 10.0101;
+
+// PV-Anlagenfaktoren aus Ihren historischen Tabellendaten extrahiert (Ertrag pro kWh/m² Globalstrahlung)
+const FAKTOREN = {
+    nord: 1.468,        // Verhältnis Ertrag Nord zu Globalstrahlung
+    sudMix: 2.755,      // Verhältnis Ertrag Süd-Mix zu Globalstrahlung
+    sudFassade: 3.754   // Verhältnis Ertrag Süd-Fassade zu Globalstrahlung
+};
+
+const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const labelNames = { "-2": "Vorgestern", "-1": "Gestern", "0": "Heute", "1": "Morgen", "2": "Übermorgen" };
+
+// Hilfsfunktion zur Formatierung von Date-Objekten zu YYYY-MM-DD
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+async function fetchAndCalculate() {
+    try {
+        const heute = new Date();
+        
+        // Zeitraum berechnen: 2 Tage zurück bis 2 Tage nach vorne
+        const vonDatum = new Date(); vonDatum.setDate(heute.getDate() - 2);
+        const bisDatum = new Date(); bisDatum.setDate(heute.getDate() + 2);
+
+        // Open-Meteo API URL für Historie + Vorhersage kombiniert
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.daily) throw new Error("Fehler beim Laden der API-Daten");
+
+        renderDashboard(data.daily);
+    } catch (error) {
+        document.getElementById("loading-text").innerText = "Fehler beim Laden der Live-Daten: " + error.message;
+    }
+}
+
+function getWeatherSymbol(code) {
+    // WMO Weather Codes zu Emojis
+    if (code <= 1) return "☀️ Sonne";
+    if (code <= 3) return "🌗 Wechselhaft";
+    if (code >= 51) return "🌧️ Regen";
+    return "☁️ Bewölkt";
+}
+
+function renderDashboard(dailyData) {
+    const grid = document.getElementById("dashboard-grid");
+    grid.innerHTML = "";
+
+    // Schleife über die 5 empfangenen Tage (-2 bis +2)
+    for (let i = 0; i < 5; i++) {
+        const dayOffset = i - 2; // Wandelt 0..4 um in -2..2
+        
+        const dateRaw = new Date(dailyData.time[i]);
+        const dateStr = dateRaw.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+        const dayName = weekdayNames[dateRaw.getDay()];
+        
+        // Wetter- und Strahlungsdaten aus der API auflösen
+        const tempMax = dailyData.temperature_2m_max[i];
+        const radSum = dailyData.shortwave_radiation_sum[i] / 3.6; // Umrechnung von MJ/m² in kWh/m²
+        const weatherType = getWeatherSymbol(dailyData.weather_code[i]);
+
+        // Dynamische PV-Ertragsberechnung anhand der echten Globalstrahlung (radSum)
+        const ertragNord = radSum * FAKTOREN.nord;
+        const ertragSudMix = radSum * FAKTOREN.sudMix;
+        const ertragSudFassade = radSum * FAKTOREN.sudFassade;
+        const gesamtErtrag = ertragNord + ertragSudMix + ertragSudFassade;
+
+        const isTodayClass = dayOffset === 0 ? 'today' : '';
+
+        const card = document.createElement("div");
+        card.className = `card ${isTodayClass}`;
+        card.innerHTML = `
+            <div class="date-title">${dayName}, ${dateStr}</div>
+            <div class="day-tag">${labelNames[dayOffset]}</div>
+            
+            <div class="weather-info">
+                <strong>${weatherType}</strong><br>
+                🌡️ Max: ${tempMax.toFixed(1)} °C<br>
+                🌤️ Strahlung: ${radSum.toFixed(2)} kWh/m²
+            </div>
+
+            <div class="results">
+                <div class="result-line"><span>Nord:</span> <span>${ertragNord.toFixed(2)} kWh</span></div>
+                <div class="result-line"><span>Süd-Mix:</span> <span>${ertragSudMix.toFixed(2)} kWh</span></div>
+                <div class="result-line"><span>Süd-Fassade:</span> <span>${ertragSudFassade.toFixed(2)} kWh</span></div>
+                <div class="result-line total-line"><span>Prognose Gesamt:</span> <span>${gesamtErtrag.toFixed(2)} kWh</span></div>
+            </div>
+        `;
+        grid.appendChild(card);
+    }
+
+    // Loader ausblenden, Grid anzeigen
+    document.getElementById("loading-text").style.display = "none";
+    grid.style.display = "grid";
+}
+
+// Beim Start die API abfragen
+window.onload = fetchAndCalculate;
+</script>
+
+</body>
+</html>
