@@ -98,7 +98,7 @@
 
 <div class="container">
     <h1>☀️ Live PV-Ertragsprognose & Historie</h1>
-    <div class="subtitle">Standort: Norderstedt | Echtzeitdaten via Open-Meteo API</div>
+    <div class="subtitle" id="anlage-subtitle">Echtzeitdaten via Open-Meteo API</div>
     
     <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
@@ -109,12 +109,8 @@
 const LAT = 53.7065;
 const LON = 10.0101;
 
-// PV-Anlagenfaktoren aus Ihren historischen Tabellendaten extrahiert (Ertrag pro kWh/m² Globalstrahlung)
-const FAKTOREN = {
-    nord: 1.468,        // Verhältnis Ertrag Nord zu Globalstrahlung
-    sudMix: 2.755,      // Verhältnis Ertrag Süd-Mix zu Globalstrahlung
-    sudFassade: 3.754   // Verhältnis Ertrag Süd-Fassade zu Globalstrahlung
-};
+let anlagenKonfiguration;
+const SYSTEMVERLUSTFAKTOR = 0.85;
 
 const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const labelNames = { "-2": "Vorgestern", "-1": "Gestern", "0": "Heute", "1": "Morgen", "2": "Übermorgen" };
@@ -126,6 +122,10 @@ function formatDate(date) {
 
 async function fetchAndCalculate() {
     try {
+        const configResponse = await fetch("anlage.json");
+        if (!configResponse.ok) throw new Error("Anlagenkonfiguration konnte nicht geladen werden");
+        anlagenKonfiguration = await configResponse.json();
+
         const heute = new Date();
         
         // Zeitraum berechnen: 2 Tage zurück bis 2 Tage nach vorne
@@ -140,7 +140,9 @@ async function fetchAndCalculate() {
 
         if (!data.daily) throw new Error("Fehler beim Laden der API-Daten");
 
-        renderDashboard(data.daily);
+        document.getElementById("anlage-subtitle").innerText =
+            `Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp | Echtzeitdaten via Open-Meteo API`;
+        renderDashboard(data.daily, anlagenKonfiguration);
     } catch (error) {
         document.getElementById("loading-text").innerText = "Fehler beim Laden der Live-Daten: " + error.message;
     }
@@ -154,7 +156,7 @@ function getWeatherSymbol(code) {
     return "☁️ Bewölkt";
 }
 
-function renderDashboard(dailyData) {
+function renderDashboard(dailyData, config) {
     const grid = document.getElementById("dashboard-grid");
     grid.innerHTML = "";
 
@@ -171,11 +173,29 @@ function renderDashboard(dailyData) {
         const radSum = dailyData.shortwave_radiation_sum[i] / 3.6; // Umrechnung von MJ/m² in kWh/m²
         const weatherType = getWeatherSymbol(dailyData.weather_code[i]);
 
-        // Dynamische PV-Ertragsberechnung anhand der echten Globalstrahlung (radSum)
-        const ertragNord = radSum * FAKTOREN.nord;
-        const ertragSudMix = radSum * FAKTOREN.sudMix;
-        const ertragSudFassade = radSum * FAKTOREN.sudFassade;
-        const gesamtErtrag = ertragNord + ertragSudMix + ertragSudFassade;
+        // String-Ertrag aus Modulgruppen und der installierten Modulleistung berechnen.
+        const modulLeistung_kWp = config.system_steckbrief.module.leistung_pro_modul_w / 1000;
+        const stringErtraege = config.string_aufteilung.map(string => {
+            const gruppen = string.modul_gruppen_nach_neigung.map(gruppe => {
+                const leistung_kWp = gruppe.anzahl_module * modulLeistung_kWp;
+                return {
+                    ...gruppe,
+                    ertrag: radSum * leistung_kWp * SYSTEMVERLUSTFAKTOR
+                };
+            });
+            return {
+                name: `String ${string.string_id}`,
+                ausrichtung: string.haupt_ausrichtung,
+                module: string.gesamt_module_anzahl,
+                neigungen: gruppen.map(gruppe => `${gruppe.anzahl_module}x ${gruppe.neigung_grad}°`).join(" + "),
+                ertrag: gruppen.reduce((summe, gruppe) => summe + gruppe.ertrag, 0),
+                gruppen
+            };
+        });
+        const gesamtErtrag = stringErtraege.reduce((summe, string) => summe + string.ertrag, 0);
+        const stringZeilen = stringErtraege.map(string =>
+            `<div class="result-line"><span>${string.name} (${string.module} Module, ${string.ausrichtung}, ${string.neigungen}):</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
+        ).join("");
 
         const isTodayClass = dayOffset === 0 ? 'today' : '';
 
@@ -192,9 +212,7 @@ function renderDashboard(dailyData) {
             </div>
 
             <div class="results">
-                <div class="result-line"><span>Nord:</span> <span>${ertragNord.toFixed(2)} kWh</span></div>
-                <div class="result-line"><span>Süd-Mix:</span> <span>${ertragSudMix.toFixed(2)} kWh</span></div>
-                <div class="result-line"><span>Süd-Fassade:</span> <span>${ertragSudFassade.toFixed(2)} kWh</span></div>
+                ${stringZeilen}
                 <div class="result-line total-line"><span>Prognose Gesamt:</span> <span>${gesamtErtrag.toFixed(2)} kWh</span></div>
             </div>
         `;
