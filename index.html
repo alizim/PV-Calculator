@@ -355,6 +355,25 @@
         .archive-row:hover { background: #f8f9fa; }
         .archive-detail { margin-top: 14px; padding: 12px; background: #f8f9fa; border-left: 3px solid #3498db; }
         .archive-empty { color: #7f8c8d; margin-bottom: 0; }
+        .archive-browser {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid #eee;
+        }
+        .archive-browser select, .archive-browser button {
+            padding: 8px 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            background: white;
+            color: #34495e;
+        }
+        .archive-browser button { cursor: pointer; font-weight: bold; }
+        .archive-browser .btn-recalculate { background: #27ae60; border-color: #27ae60; color: white; }
+        .archive-cards { margin-top: 14px; }
     </style>
 </head>
 <body>
@@ -384,6 +403,14 @@
             </table>
         </div>
         <div id="archive-detail" class="archive-detail" style="display: none;"></div>
+        <div id="archive-browser" class="archive-browser" style="display: none;">
+            <strong>Archivkarte:</strong>
+            <button type="button" onclick="showPreviousArchiveDay()" aria-label="Vorheriger Archivtag">&larr;</button>
+            <select id="archive-date-select" onchange="showSelectedArchiveDay()" aria-label="Archivdatum"></select>
+            <button type="button" onclick="showNextArchiveDay()" aria-label="Nächster Archivtag">&rarr;</button>
+            <button class="btn-recalculate" type="button" onclick="recalculateSelectedArchiveDay()">Prognose neu berechnen</button>
+        </div>
+        <div id="archive-cards" class="grid archive-cards" style="display: none;"></div>
     </section>
 </div>
 
@@ -591,13 +618,12 @@ function toggleStringDefinitions() {
     button.innerText = isVisible ? "String-Konfiguration anzeigen" : "String-Konfiguration ausblenden";
 }
 
-function renderDashboard(dailyData, config, irradianceProfiles) {
-    const grid = document.getElementById("dashboard-grid");
+function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dashboard-grid", persistArchive = true) {
+    const grid = document.getElementById(targetId);
     grid.innerHTML = "";
 
-    // Schleife über die 5 empfangenen Tage (-2 bis +2)
-    for (let i = 0; i < 5; i++) {
-        const dayOffset = i - 2; // Wandelt 0..4 um in -2..2
+    for (let i = 0; i < dailyData.time.length; i++) {
+        const dayOffset = targetId === "dashboard-grid" ? i - 2 : null;
         
         const dateRaw = new Date(dailyData.time[i]);
         const dateStr = dateRaw.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
@@ -611,7 +637,9 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
 
         const stringErtraege = calculateStringYields(dailyData.time[i], config, irradianceProfiles);
         const gesamtErtrag = stringErtraege.reduce((summe, string) => summe + string.ertrag, 0);
-        saveArchiveRecord(dailyData.time[i], dailyData, i, stringErtraege, gesamtErtrag, irradianceProfiles);
+        if (persistArchive) {
+            saveArchiveRecord(dailyData.time[i], dailyData, i, stringErtraege, gesamtErtrag, irradianceProfiles);
+        }
         const stringZeilen = stringErtraege.map(string =>
             `<div class="result-line"><span>String ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
         ).join("");
@@ -622,7 +650,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         card.className = `card ${isTodayClass}`;
         card.innerHTML = `
             <div class="date-title">${dayName}, ${dateStr}</div>
-            <div class="day-tag">${labelNames[dayOffset]}</div>
+            <div class="day-tag">${dayOffset === null ? "Archiv" : labelNames[dayOffset]}</div>
             
             <div class="weather-info">
                 <strong>${weatherType}</strong><br>
@@ -636,7 +664,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
                 <div class="result-line total-line"><span>Prognose Gesamt:</span> <span>${gesamtErtrag.toFixed(2)} kWh</span></div>
             </div>
 
-            <div id="actual-section-${i}" class="actual-values empty"></div>
+            <div id="${targetId}-actual-section-${i}" class="actual-values empty"></div>
             
             <div style="margin-top: 15px; text-align: center;">
                 <button class="btn-edit" onclick="openActualValuesModal('${dailyData.time[i]}', ${i})">Realwerte eingeben</button>
@@ -645,11 +673,13 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         grid.appendChild(card);
         
         // Nach dem Einfügen: Realwerte laden und anzeigen
-        displayActualValuesForDay(dailyData.time[i], stringErtraege, i);
+        displayActualValuesForDay(dailyData.time[i], stringErtraege, `${targetId}-actual-section-${i}`);
     }
 
     // Loader ausblenden, Grid anzeigen
-    document.getElementById("loading-text").style.display = "none";
+    if (targetId === "dashboard-grid") {
+        document.getElementById("loading-text").style.display = "none";
+    }
     grid.style.display = "grid";
 }
 
@@ -710,6 +740,77 @@ function renderArchive() {
             <td>${deviation}</td>
         </tr>`;
     }).join("");
+    const browser = document.getElementById("archive-browser");
+    const cards = document.getElementById("archive-cards");
+    browser.style.display = records.length ? "flex" : "none";
+    cards.style.display = records.length ? "grid" : "none";
+    const select = document.getElementById("archive-date-select");
+    select.innerHTML = records.map(record => `<option value="${record.date}">${new Date(`${record.date}T12:00:00`).toLocaleDateString('de-DE')}</option>`).join("");
+    if (records.length) showSelectedArchiveDay();
+}
+
+function getSelectedArchiveRecord() {
+    const date = document.getElementById("archive-date-select").value;
+    return loadArchive()[date];
+}
+
+function showSelectedArchiveDay() {
+    const record = getSelectedArchiveRecord();
+    if (!record) return;
+    const irradianceProfiles = new Map(Object.entries(record.tiltedIrradiance).map(([key, values]) => [key, {
+        time: values.map(value => value.time),
+        global_tilted_irradiance: values.map(value => value.value)
+    }]));
+    const dailyData = {
+        time: [record.date],
+        weather_code: [record.weatherCode],
+        temperature_2m_max: [record.temperatureMax],
+        shortwave_radiation_sum: [record.horizontalRadiation]
+    };
+    renderDashboard(dailyData, anlagenKonfiguration, irradianceProfiles, "archive-cards", false);
+}
+
+function moveArchiveSelection(step) {
+    const select = document.getElementById("archive-date-select");
+    const nextIndex = select.selectedIndex + step;
+    if (nextIndex >= 0 && nextIndex < select.options.length) {
+        select.selectedIndex = nextIndex;
+        showSelectedArchiveDay();
+    }
+}
+
+function showPreviousArchiveDay() { moveArchiveSelection(1); }
+function showNextArchiveDay() { moveArchiveSelection(-1); }
+
+async function recalculateSelectedArchiveDay() {
+    const record = getSelectedArchiveRecord();
+    if (!record) return;
+    const button = document.querySelector(".btn-recalculate");
+    button.disabled = true;
+    button.innerText = "Berechne neu...";
+    try {
+        const date = new Date(`${record.date}T12:00:00`);
+        const { latitude, longitude } = anlagenKonfiguration.koordinaten;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${record.date}&end_date=${record.date}`;
+        const [response, irradianceProfiles] = await Promise.all([
+            fetch(url),
+            fetchTiltedIrradiance(anlagenKonfiguration, date, date)
+        ]);
+        if (!response.ok) throw new Error(`Wetterdaten konnten nicht geladen werden (HTTP ${response.status})`);
+        const data = await response.json();
+        const stringYields = calculateStringYields(record.date, anlagenKonfiguration, irradianceProfiles);
+        const totalForecast = stringYields.reduce((sum, string) => sum + string.ertrag, 0);
+        saveArchiveRecord(record.date, data.daily, 0, stringYields, totalForecast, irradianceProfiles);
+        renderArchive();
+        document.getElementById("archive-date-select").value = record.date;
+        showSelectedArchiveDay();
+        showArchiveDetail(record.date);
+    } catch (error) {
+        alert(`Neuberechnung fehlgeschlagen: ${error.message}`);
+    } finally {
+        button.disabled = false;
+        button.innerText = "Prognose neu berechnen";
+    }
 }
 
 function showArchiveDetail(date) {
@@ -823,9 +924,9 @@ function saveActualValues() {
     fetchAndCalculate();
 }
 
-function displayActualValuesForDay(dateStr, stringErtraege, cardIndex) {
+function displayActualValuesForDay(dateStr, stringErtraege, sectionId) {
     const actualValues = loadActualValues(dateStr);
-    const section = document.getElementById(`actual-section-${cardIndex}`);
+    const section = document.getElementById(sectionId);
     
     if (!actualValues) {
         section.className = 'actual-values empty';

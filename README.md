@@ -17,6 +17,7 @@ Photovoltaikanlage in Norderstedt zugeschnitten.
 - Speicherung der Realwerte lokal im Browser
 - Historisches Archiv für Wetter-, Einstrahlungs-, Prognose- und Realwertdaten
 - Archivansicht mit Tagesdetails und JSON-Export für spätere Modellauswertung
+- Archivkarten mit Datumsnavigation und erneuter Tagesprognose
 - Automatische Nutzung einer lokalen oder der öffentlichen GitHub-Konfiguration
 
 ## Starten
@@ -52,6 +53,10 @@ Es gibt kein Build-System und keine Paketinstallation.
 	werden, um Wetter-, Strahlungs- und Realwertdetails zu sehen. Mit `Archiv
 	exportieren` werden alle Daten als JSON-Datei für eine spätere Auswertung oder
 	Modellverfeinerung heruntergeladen.
+8. Über `Archivkarte` können gespeicherte Tage mit den Pfeilen oder der
+	Datums-Auswahl geöffnet werden. `Prognose neu berechnen` ruft Wetter- und
+	Einstrahlungsdaten für genau diesen Tag erneut ab und aktualisiert den
+	Archivdatensatz mit der aktuellen Anlagenkonfiguration.
 
 Die gespeicherten Realwerte und Archivdaten liegen ausschließlich im `localStorage`
 des jeweils verwendeten Browsers. Das Archiv enthält pro Tag den Wettercode, die
