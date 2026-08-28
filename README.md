@@ -61,18 +61,8 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 	Fassadenmodule
 
 Die Ausrichtungswerte werden in `index.html` über eine feste Azimut-Tabelle
-aufgelöst. Deshalb müssen sie in `anlage.json` exakt einem dieser Schlüssel
-entsprechen:
-
-- `Nordnordwest (NNW)`
-- `Südsüdost (SSO)`
-- `Ost-Außenwand (Klinkerwand)`
-
-Aktuell ist die Anlage so aufgeteilt:
-
-- String 1: 13 Module, `Nordnordwest (NNW)`
-- String 2: 8 Module, `Südsüdost (SSO)`
-- String 3: 11 Module, `Südsüdost (SSO) + Wand`
+aufgelöst. Die Werte in `anlage.json` müssen daher exakt einem dort
+hinterlegten Ausrichtungsschlüssel entsprechen.
 
 Die Oberfläche erzeugt Eingabefelder und Prognosezeilen automatisch aus
 `string_aufteilung`. Daher können beliebig viele Strings konfiguriert werden.
