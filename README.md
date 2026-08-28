@@ -8,6 +8,7 @@ Photovoltaikanlage in Norderstedt zugeschnitten.
 
 - Anzeige von zwei vergangenen, dem aktuellen und zwei kommenden Tagen
 - String-Konfiguration über einen Button oberhalb der Tageskarten einblendbar
+- Laufzeit-Simulation von Azimut/Ausrichtung, Neigung und Verlustfaktor je Modulgruppe
 - Wetterdaten, Temperatur und horizontale Globalstrahlung
 - Sonnenhöchststand je Tag auf Basis von Breitengrad und Jahresdatum
 - Ertragsberechnung je String und als Gesamtsumme
@@ -41,6 +42,10 @@ Es gibt kein Build-System und keine Paketinstallation.
 3. Für einen Tag `Realwerte eingeben` auswählen.
 4. Gemessene Erträge in kWh für einen oder mehrere Strings eintragen und speichern.
 5. Die Abweichung zur Prognose wird anschließend direkt auf der Tageskarte angezeigt.
+6. Unter `String-Konfiguration anzeigen` können Azimut, Neigung und Verlustfaktor
+	geändert und mit `Änderungen anwenden` neu berechnet werden. Die geänderte
+	Konfiguration bleibt im Browser gespeichert; `JSON-Werte wiederherstellen`
+	setzt sie auf die Werte aus `anlage.json` zurück.
 
 Die gespeicherten Realwerte liegen ausschließlich im `localStorage` des jeweils
 verwendeten Browsers. Ein Löschen der Browserdaten entfernt diese Werte.
@@ -72,6 +77,14 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 Die konkreten Azimutwerte werden in `anlage.json` konfiguriert. `index.html`
 verwendet diese Werte dynamisch für die API-Abfragen; der Ausrichtungstext
 dient nur der Anzeige.
+
+Die Oberfläche übernimmt diese Werte zunächst aus der JSON und stellt sie als
+Laufzeitfelder je Modulgruppe bereit. Der Azimut wird dabei als numerische
+Ausrichtung in Grad verwendet, die Neigung ist auf 0 bis 90 Grad begrenzt und
+der Verlustfaktor auf 0 bis 1. Beim Anwenden werden die geneigten
+Einstrahlungsprofile mit den neuen Werten erneut von Open-Meteo geladen. Die
+Laufzeitänderungen werden ausschließlich im `localStorage` des Browsers
+gespeichert und verändern `anlage.json` nicht.
 
 Die Oberfläche erzeugt Eingabefelder und Prognosezeilen automatisch aus
 `string_aufteilung`. Daher können beliebig viele Strings konfiguriert werden.

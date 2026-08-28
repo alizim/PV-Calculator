@@ -59,6 +59,70 @@
         .string-definition:first-of-type {
             border-top: none;
         }
+        .configuration-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .configuration-actions button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-apply-configuration {
+            background-color: #27ae60;
+            color: white;
+        }
+        .btn-reset-configuration {
+            background-color: #ecf0f1;
+            color: #34495e;
+        }
+        .configuration-string {
+            border-top: 1px solid #eee;
+            padding: 14px 0 4px;
+        }
+        .configuration-string h3 {
+            margin: 0 0 10px;
+            font-size: 1em;
+            color: #34495e;
+        }
+        .configuration-group {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(95px, 130px));
+            gap: 8px;
+            align-items: end;
+            margin: 8px 0;
+        }
+        .configuration-group label {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 0.8em;
+            color: #5d6d7e;
+        }
+        .configuration-group input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+        .configuration-status {
+            color: #27ae60;
+            font-size: 0.9em;
+            margin: 8px 0 0;
+        }
+        @media (max-width: 700px) {
+            .configuration-group {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+            .configuration-group label:first-child {
+                grid-column: 1 / -1;
+            }
+        }
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -284,6 +348,7 @@
 <script src="calc.js"></script>
 <script>
 let anlagenKonfiguration;
+let anlagenKonfigurationOriginal;
 const KONFIGURATIONS_URLEN = [
     "./anlage.json",
     "https://raw.githubusercontent.com/alizim/PV-Calculator/main/anlage.json"
@@ -333,20 +398,27 @@ async function fetchAndCalculate() {
             throw new Error("Bitte index.html über einen Webserver öffnen, damit anlage.json geladen werden kann");
         }
 
-        let letzterKonfigurationsfehler;
-        for (const konfigurationsUrl of KONFIGURATIONS_URLEN) {
-            try {
-                const configUrl = new URL(konfigurationsUrl, document.baseURI);
-                const configResponse = await fetch(configUrl);
-                if (!configResponse.ok) throw new Error(`HTTP ${configResponse.status}`);
-                anlagenKonfiguration = await configResponse.json();
-                break;
-            } catch (error) {
-                letzterKonfigurationsfehler = error;
-            }
-        }
         if (!anlagenKonfiguration) {
-            throw new Error(`Anlagenkonfiguration konnte nicht geladen werden: ${letzterKonfigurationsfehler.message}`);
+            let letzterKonfigurationsfehler;
+            for (const konfigurationsUrl of KONFIGURATIONS_URLEN) {
+                try {
+                    const configUrl = new URL(konfigurationsUrl, document.baseURI);
+                    const configResponse = await fetch(configUrl);
+                    if (!configResponse.ok) throw new Error(`HTTP ${configResponse.status}`);
+                    anlagenKonfiguration = await configResponse.json();
+                    anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
+                    const gespeicherteStrings = localStorage.getItem("pv_string_configuration");
+                    if (gespeicherteStrings) {
+                        anlagenKonfiguration.string_aufteilung = JSON.parse(gespeicherteStrings);
+                    }
+                    break;
+                } catch (error) {
+                    letzterKonfigurationsfehler = error;
+                }
+            }
+            if (!anlagenKonfiguration) {
+                throw new Error(`Anlagenkonfiguration konnte nicht geladen werden: ${letzterKonfigurationsfehler.message}`);
+            }
         }
 
         const { vonDatum, bisDatum } = getDateRange();
@@ -392,8 +464,62 @@ function renderStringDefinitions(config) {
         return `<div class="string-definition"><strong>String ${string.string_id}: ${name}</strong> - ${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung || "Ausrichtung nicht angegeben"}<br><small>${gruppen}</small></div>`;
     }).join("");
 
-    definitions.innerHTML = `<h2>String-Konfiguration</h2>${entries}`;
+    const editor = config.string_aufteilung.map(string => {
+        const groups = string.modul_gruppen_nach_neigung.map((gruppe, groupIndex) => `
+            <div class="configuration-group">
+                <label>${gruppe.beschreibung || `Modulgruppe ${groupIndex + 1}`}
+                    <small>${gruppe.anzahl_module} Module</small>
+                </label>
+                <label>Azimut (°)<input type="number" step="0.1" data-string-id="${string.string_id}" data-group-index="${groupIndex}" data-field="azimut_grad" value="${gruppe.azimut_grad}"></label>
+                <label>Neigung (°)<input type="number" min="0" max="90" step="0.1" data-string-id="${string.string_id}" data-group-index="${groupIndex}" data-field="neigung_grad" value="${gruppe.neigung_grad}"></label>
+                <label>Verlustfaktor<input type="number" min="0" max="1" step="0.01" data-string-id="${string.string_id}" data-group-index="${groupIndex}" data-field="verlustfaktor" value="${gruppe.verlustfaktor ?? string.verlustfaktor ?? config.verlustfaktor_standard}"></label>
+            </div>`).join("");
+        return `<section class="configuration-string"><h3>String ${string.string_id}: ${string.name || `String ${string.string_id}`}</h3>${groups}</section>`;
+    }).join("");
+
+    definitions.innerHTML = `<h2>String-Konfiguration</h2>
+        <div class="configuration-actions">
+            <button class="btn-apply-configuration" type="button" onclick="applyStringConfiguration()">Änderungen anwenden</button>
+            <button class="btn-reset-configuration" type="button" onclick="resetStringConfiguration()">JSON-Werte wiederherstellen</button>
+        </div>
+        ${editor}
+        <p id="configuration-status" class="configuration-status" aria-live="polite"></p>
+        <hr>${entries}`;
     document.getElementById("toggle-string-definitions").style.display = "inline-block";
+}
+
+function applyStringConfiguration() {
+    const inputs = document.querySelectorAll("#string-definitions input[data-field]");
+    const changedConfiguration = structuredClone(anlagenKonfiguration);
+
+    for (const input of inputs) {
+        const value = Number(input.value);
+        if (!Number.isFinite(value)) {
+            input.focus();
+            alert("Bitte nur gültige Zahlen in der String-Konfiguration verwenden.");
+            return;
+        }
+        if (input.dataset.field === "verlustfaktor" && (value < 0 || value > 1)) {
+            input.focus();
+            alert("Der Verlustfaktor muss zwischen 0 und 1 liegen.");
+            return;
+        }
+        const string = changedConfiguration.string_aufteilung.find(item => String(item.string_id) === input.dataset.stringId);
+        string.modul_gruppen_nach_neigung[Number(input.dataset.groupIndex)][input.dataset.field] = value;
+    }
+
+    anlagenKonfiguration = changedConfiguration;
+    localStorage.setItem("pv_string_configuration", JSON.stringify(anlagenKonfiguration.string_aufteilung));
+    document.getElementById("configuration-status").innerText = "Änderungen werden geladen...";
+    fetchAndCalculate();
+}
+
+function resetStringConfiguration() {
+    anlagenKonfiguration = structuredClone(anlagenKonfigurationOriginal);
+    localStorage.removeItem("pv_string_configuration");
+    renderStringDefinitions(anlagenKonfiguration);
+    document.getElementById("configuration-status").innerText = "JSON-Werte wiederhergestellt.";
+    fetchAndCalculate();
 }
 
 function toggleStringDefinitions() {
