@@ -47,6 +47,7 @@
           "beschreibung": "Steildachmodule (links, rechts, mittig über Gaube)",
           "anzahl_module": 10,
           "neigung_grad": 48,
+          "azimut_grad": 163.5,
           "ausrichtung": "Nordnordwest (NNW)",
           "layout_detail": "6 links, 3 rechts (vertikal untereinander), 1 mittig über der Nordgaube"
         },
@@ -54,6 +55,7 @@
           "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
           "neigung_grad": 24,
+          "azimut_grad": 163.5,
           "ausrichtung": "Nordnordwest (NNW)",
           "layout_detail": "3 quer auf dem Gaubendach"
         }
@@ -71,6 +73,7 @@
           "beschreibung": "Steildachmodule (über und neben Gaube)",
           "anzahl_module": 5,
           "neigung_grad": 48,
+          "azimut_grad": -16.5,
           "ausrichtung": "Südsüdost (SSO)",
           "layout_detail": "2 über der Südgaube, 3 rechts daneben (vertikal untereinander)"
         },
@@ -78,6 +81,7 @@
           "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
           "neigung_grad": 24,
+          "azimut_grad": -16.5,
           "ausrichtung": "Südsüdost (SSO)",
           "layout_detail": "3 quer auf dem Gaubendach"
         }
@@ -95,6 +99,7 @@
           "beschreibung": "Steildachmodule links neben Gaube",
           "anzahl_module": 8,
           "neigung_grad": 48,
+          "azimut_grad": -16.5,
           "ausrichtung": "Südsüdost (SSO)",
           "layout_detail": "8 Steildachmodule links neben der Gaube (3 Spalten: 3, 3, 2)"
         },
@@ -102,6 +107,7 @@
           "beschreibung": "Fassadenmodule",
           "anzahl_module": 3,
           "neigung_grad": 90,
+          "azimut_grad": -16.5,
           "ausrichtung": "Ost-Außenwand (Klinkerwand)",
           "verlustfaktor": 0.5,
           "layout_detail": "3 vertikale Fassadenmodule an der roten Klinkerwand"

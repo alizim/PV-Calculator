@@ -257,15 +257,18 @@ const KONFIGURATIONS_URLEN = [
 const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const labelNames = { "-2": "Vorgestern", "-1": "Gestern", "0": "Heute", "1": "Morgen", "2": "Übermorgen" };
 
-const AUSRICHTUNG_AZIMUT = {
-    "Nordnordwest (NNW)": 163.5,
-    "Südsüdost (SSO)": -16.5,
-    "Ost-Außenwand (Klinkerwand)": -90
-};
-
 // Hilfsfunktion zur Formatierung von Date-Objekten zu YYYY-MM-DD
 function formatDate(date) {
     return date.toISOString().split('T')[0];
+}
+
+function getAzimut(gruppe) {
+    const azimut = Number(gruppe.azimut_grad);
+    if (!Number.isFinite(azimut)) {
+        throw new Error(`Ungültiger Azimutwert: ${gruppe.azimut_grad}`);
+    }
+
+    return ((azimut + 180) % 360 + 360) % 360 - 180;
 }
 
 function getDateRange() {
@@ -282,8 +285,7 @@ async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
     const profile = new Map();
 
     await Promise.all(gruppen.map(async gruppe => {
-        const azimut = AUSRICHTUNG_AZIMUT[gruppe.ausrichtung];
-        if (azimut === undefined) throw new Error(`Unbekannte Ausrichtung: ${gruppe.ausrichtung}`);
+        const azimut = getAzimut(gruppe);
 
         const profileKey = `${gruppe.neigung_grad}:${azimut}`;
         if (profile.has(profileKey)) return;
@@ -382,7 +384,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
             
             const gruppen = string.modul_gruppen_nach_neigung.map(gruppe => {
                 const leistung_kWp = gruppe.anzahl_module * modulLeistung_kWp;
-                const azimut = AUSRICHTUNG_AZIMUT[gruppe.ausrichtung];
+                const azimut = getAzimut(gruppe);
                 const irradiance = getDailyIrradiance(
                     irradianceProfiles.get(`${gruppe.neigung_grad}:${azimut}`),
                     dailyData.time[i]

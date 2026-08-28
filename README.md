@@ -55,14 +55,16 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 - `string_aufteilung[].name`: optionaler Anzeigename; ohne Angabe wird
 	`String <string_id>` verwendet
 - `string_aufteilung[].verlustfaktor`: Faktor für System- und Stringverluste
-- `modul_gruppen_nach_neigung`: Modulgruppen mit Anzahl, Neigung und Ausrichtung
+- `modul_gruppen_nach_neigung`: Modulgruppen mit Anzahl, Neigung und Azimut
+- `modul_gruppen_nach_neigung[].azimut_grad`: Azimut der Modulgruppe in Grad
+- `modul_gruppen_nach_neigung[].ausrichtung`: optionaler Anzeigename der Ausrichtung
 - `modul_gruppen_nach_neigung[].verlustfaktor`: optionaler, gruppenspezifischer
 	Faktor; dieser überschreibt den String-Faktor, z. B. für verschattete
 	Fassadenmodule
 
-Die Ausrichtungswerte werden in `index.html` über eine feste Azimut-Tabelle
-aufgelöst. Die Werte in `anlage.json` müssen daher exakt einem dort
-hinterlegten Ausrichtungsschlüssel entsprechen.
+Die konkreten Azimutwerte werden in `anlage.json` konfiguriert. `index.html`
+verwendet diese Werte dynamisch für die API-Abfragen; der Ausrichtungstext
+dient nur der Anzeige.
 
 Die Oberfläche erzeugt Eingabefelder und Prognosezeilen automatisch aus
 `string_aufteilung`. Daher können beliebig viele Strings konfiguriert werden.
