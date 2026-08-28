@@ -26,6 +26,25 @@
             color: #7f8c8d;
             margin-bottom: 30px;
         }
+        .string-definitions {
+            background: white;
+            border-left: 4px solid #3498db;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .string-definitions h2 {
+            font-size: 1.1em;
+            margin: 0 0 10px;
+            color: #34495e;
+        }
+        .string-definition {
+            padding: 6px 0;
+            border-top: 1px solid #eee;
+        }
+        .string-definition:first-of-type {
+            border-top: none;
+        }
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -224,6 +243,7 @@
 <div class="container">
     <h1>☀️ Live PV-Ertragsprognose & Historie</h1>
     <div class="subtitle" id="anlage-subtitle">Echtzeitdaten via Open-Meteo API</div>
+    <div id="string-definitions" class="string-definitions" style="display: none;"></div>
     
     <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
@@ -329,8 +349,10 @@ async function fetchAndCalculate() {
 
         if (!data.daily) throw new Error("Fehler beim Laden der API-Daten");
 
+        const anlagenBeschreibung = anlagenKonfiguration.beschreibung || "Photovoltaikanlage";
         document.getElementById("anlage-subtitle").innerText =
-            `${anlagenKonfiguration.beschreibung} | Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp`;
+            `${anlagenBeschreibung} | Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp`;
+        renderStringDefinitions(anlagenKonfiguration);
         renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
     } catch (error) {
         document.getElementById("loading-text").innerText = "Fehler beim Laden der Live-Daten: " + error.message;
@@ -343,6 +365,20 @@ function getWeatherSymbol(code) {
     if (code <= 3) return "🌗 Wechselhaft";
     if (code >= 51) return "🌧️ Regen";
     return "☁️ Bewölkt";
+}
+
+function renderStringDefinitions(config) {
+    const definitions = document.getElementById("string-definitions");
+    const entries = config.string_aufteilung.map(string => {
+        const gruppen = string.modul_gruppen_nach_neigung.map(gruppe =>
+            `${gruppe.anzahl_module}x ${gruppe.neigung_grad}° Neigung, ${gruppe.ausrichtung || `Azimut ${gruppe.azimut_grad}°`}`
+        ).join("; ");
+        const name = string.name || `String ${string.string_id}`;
+        return `<div class="string-definition"><strong>String ${string.string_id}: ${name}</strong> - ${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung || "Ausrichtung nicht angegeben"}<br><small>${gruppen}</small></div>`;
+    }).join("");
+
+    definitions.innerHTML = `<h2>Stringdefinitionen</h2>${entries}`;
+    definitions.style.display = "block";
 }
 
 function renderDashboard(dailyData, config, irradianceProfiles) {
@@ -366,7 +402,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         const stringErtraege = calculateStringYields(dailyData.time[i], config, irradianceProfiles);
         const gesamtErtrag = stringErtraege.reduce((summe, string) => summe + string.ertrag, 0);
         const stringZeilen = stringErtraege.map(string =>
-            `<div class="result-line"><span>${string.name}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
+            `<div class="result-line"><span>String ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
         ).join("");
 
         const isTodayClass = dayOffset === 0 ? 'today' : '';
@@ -516,7 +552,7 @@ function displayActualValuesForDay(dateStr, stringErtraege, cardIndex) {
             const deviationSign = deviation >= 0 ? '+' : '';
             
             return `<div class="result-line">
-                <span>${string.name}:</span>
+                <span>String ${string.id}:</span>
                 <span>${actualValue.toFixed(2)} kWh <span class="deviation ${deviationClass}">
                 ${deviationSign}${deviation.toFixed(2)} kWh (${deviationSign}${deviationPercent}%)</span></span>
             </div>`;
