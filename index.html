@@ -377,6 +377,9 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         // Jede Modulgruppe wird mit ihrer eigenen geneigten Einstrahlung berechnet.
         const modulLeistung_kWp = config.system_steckbrief.module.leistung_pro_modul_w / 1000;
         const stringErtraege = config.string_aufteilung.map(string => {
+            // String-spezifischer Verlustfaktor oder Standard verwenden
+            const stringVerlustfaktor = string.verlustfaktor !== undefined ? string.verlustfaktor : SYSTEMVERLUSTFAKTOR;
+            
             const gruppen = string.modul_gruppen_nach_neigung.map(gruppe => {
                 const leistung_kWp = gruppe.anzahl_module * modulLeistung_kWp;
                 const azimut = AUSRICHTUNG_AZIMUT[gruppe.ausrichtung];
@@ -386,7 +389,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
                 );
                 return {
                     ...gruppe,
-                    ertrag: irradiance * leistung_kWp * SYSTEMVERLUSTFAKTOR
+                    ertrag: irradiance * leistung_kWp * stringVerlustfaktor
                 };
             });
             return {

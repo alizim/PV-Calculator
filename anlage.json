@@ -39,6 +39,7 @@
       "string_id": 1,
       "gesamt_module_anzahl": 13,
       "haupt_ausrichtung": "Nordnordost (NNO)",
+      "verlustfaktor": 0.39,
       "verhalten": "Starker Diffuslicht-Lieferant. Fängt im Hochsommer (21.04. – 20.08.) spätes direktes Abendlicht aus Nordwesten ein.",
       "modul_gruppen_nach_neigung": [
         {
@@ -61,6 +62,7 @@
       "string_id": 2,
       "gesamt_module_anzahl": 8,
       "haupt_ausrichtung": "Südsüdwest (SSW)",
+      "verlustfaktor": 0.85,
       "verhalten": "Standard-Erzeugung laut Ausrichtung",
       "modul_gruppen_nach_neigung": [
         {
@@ -83,6 +85,7 @@
       "string_id": 3,
       "gesamt_module_anzahl": 11,
       "haupt_ausrichtung": "Südsüdwest (SSW) + Wand",
+      "verlustfaktor": 0.85,
       "verhalten": "Explodiert vormittags schlagartig nach oben, sobald die Sonne den morgendlichen Eigenschatten der Gaube und den Schatten eines östlichen Baumes vor der Fassade verlässt.",
       "modul_gruppen_nach_neigung": [
         {
