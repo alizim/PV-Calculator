@@ -314,6 +314,47 @@
             background-color: #fadbd8;
             color: #e74c3c;
         }
+        .archive {
+            background: white;
+            margin-top: 24px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .archive-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .archive h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        .archive-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .archive-actions button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-archive-export { background: #3498db; color: white; }
+        .btn-archive-clear { background: #ecf0f1; color: #34495e; }
+        .archive-table-wrapper { overflow-x: auto; margin-top: 14px; }
+        .archive table { width: 100%; border-collapse: collapse; min-width: 620px; }
+        .archive th, .archive td { padding: 9px 8px; border-bottom: 1px solid #eee; text-align: left; }
+        .archive th { color: #5d6d7e; font-size: 0.82em; }
+        .archive td { font-size: 0.9em; }
+        .archive-row { cursor: pointer; }
+        .archive-row:hover { background: #f8f9fa; }
+        .archive-detail { margin-top: 14px; padding: 12px; background: #f8f9fa; border-left: 3px solid #3498db; }
+        .archive-empty { color: #7f8c8d; margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -326,6 +367,24 @@
     
     <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
+
+    <section class="archive" aria-labelledby="archive-title">
+        <div class="archive-header">
+            <h2 id="archive-title">Historisches Archiv</h2>
+            <div class="archive-actions">
+                <button class="btn-archive-export" type="button" onclick="exportArchive()">Archiv exportieren</button>
+                <button class="btn-archive-clear" type="button" onclick="clearArchive()">Archiv löschen</button>
+            </div>
+        </div>
+        <p id="archive-empty" class="archive-empty">Noch keine historischen API-Daten gespeichert.</p>
+        <div class="archive-table-wrapper">
+            <table id="archive-table" style="display: none;">
+                <thead><tr><th>Datum</th><th>Wetter</th><th>Prognose</th><th>Realwert</th><th>Abweichung</th></tr></thead>
+                <tbody id="archive-table-body"></tbody>
+            </table>
+        </div>
+        <div id="archive-detail" class="archive-detail" style="display: none;"></div>
+    </section>
 </div>
 
 <!-- Modal für Realwerte eingeben -->
@@ -441,6 +500,7 @@ async function fetchAndCalculate() {
             `${anlagenBeschreibung} | Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp`;
         renderStringDefinitions(anlagenKonfiguration);
         renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
+        renderArchive();
     } catch (error) {
         document.getElementById("loading-text").innerText = "Fehler beim Laden der Live-Daten: " + error.message;
     }
@@ -551,6 +611,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
 
         const stringErtraege = calculateStringYields(dailyData.time[i], config, irradianceProfiles);
         const gesamtErtrag = stringErtraege.reduce((summe, string) => summe + string.ertrag, 0);
+        saveArchiveRecord(dailyData.time[i], dailyData, i, stringErtraege, gesamtErtrag, irradianceProfiles);
         const stringZeilen = stringErtraege.map(string =>
             `<div class="result-line"><span>String ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
         ).join("");
@@ -590,6 +651,92 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
     // Loader ausblenden, Grid anzeigen
     document.getElementById("loading-text").style.display = "none";
     grid.style.display = "grid";
+}
+
+const ARCHIVE_KEY = "pv_historical_archive";
+
+function loadArchive() {
+    try {
+        return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "{}");
+    } catch (error) {
+        return {};
+    }
+}
+
+function saveArchiveRecord(dateStr, dailyData, index, stringYields, totalForecast, irradianceProfiles) {
+    const archive = loadArchive();
+    const date = dateStr.slice(0, 10);
+    const irradiance = {};
+    for (const [profileKey, hourly] of irradianceProfiles) {
+        irradiance[profileKey] = hourly.time.reduce((values, timestamp, hourlyIndex) => {
+            if (timestamp.startsWith(date)) {
+                values.push({ time: timestamp, value: hourly.global_tilted_irradiance[hourlyIndex] || 0 });
+            }
+            return values;
+        }, []);
+    }
+    archive[date] = {
+        date,
+        savedAt: new Date().toISOString(),
+        weatherCode: dailyData.weather_code[index],
+        temperatureMax: dailyData.temperature_2m_max[index],
+        horizontalRadiation: dailyData.shortwave_radiation_sum[index],
+        forecast: {
+            total: totalForecast,
+            strings: Object.fromEntries(stringYields.map(string => [`string_${string.id}`, string.ertrag]))
+        },
+        tiltedIrradiance: irradiance,
+        actual: loadActualValues(date) || archive[date]?.actual || null
+    };
+    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+}
+
+function renderArchive() {
+    const archive = loadArchive();
+    const records = Object.values(archive).sort((first, second) => second.date.localeCompare(first.date));
+    const empty = document.getElementById("archive-empty");
+    const table = document.getElementById("archive-table");
+    const body = document.getElementById("archive-table-body");
+    empty.style.display = records.length ? "none" : "block";
+    table.style.display = records.length ? "table" : "none";
+    body.innerHTML = records.map(record => {
+        const actualTotal = record.actual ? Object.values(record.actual).reduce((sum, value) => sum + Number(value), 0) : null;
+        const deviation = actualTotal === null ? "-" : `${(actualTotal - record.forecast.total).toFixed(2)} kWh`;
+        return `<tr class="archive-row" onclick="showArchiveDetail('${record.date}')">
+            <td>${new Date(`${record.date}T12:00:00`).toLocaleDateString('de-DE')}</td>
+            <td>${getWeatherSymbol(record.weatherCode)} / ${Number(record.temperatureMax).toFixed(1)} °C</td>
+            <td>${record.forecast.total.toFixed(2)} kWh</td>
+            <td>${actualTotal === null ? "-" : `${actualTotal.toFixed(2)} kWh`}</td>
+            <td>${deviation}</td>
+        </tr>`;
+    }).join("");
+}
+
+function showArchiveDetail(date) {
+    const record = loadArchive()[date];
+    if (!record) return;
+    const actualValues = record.actual ? Object.entries(record.actual).map(([id, value]) => `${id.replace("string_", "String ")}: ${Number(value).toFixed(2)} kWh`).join(", ") : "noch kein Realwert";
+    const irradiancePoints = Object.values(record.tiltedIrradiance).reduce((sum, values) => sum + values.length, 0);
+    const detail = document.getElementById("archive-detail");
+    detail.innerHTML = `<strong>${new Date(`${date}T12:00:00`).toLocaleDateString('de-DE')}</strong>: ${actualValues}<br>
+        Wettercode ${record.weatherCode}, horizontale Strahlung ${(Number(record.horizontalRadiation) / 3.6).toFixed(2)} kWh/m², gespeicherte geneigte Stundenwerte: ${irradiancePoints}`;
+    detail.style.display = "block";
+}
+
+function exportArchive() {
+    const blob = new Blob([JSON.stringify(loadArchive(), null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `pv-archiv-${formatDate(new Date())}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+function clearArchive() {
+    if (!confirm("Alle historischen Prognose-, Wetter- und Einstrahlungsdaten löschen?")) return;
+    localStorage.removeItem(ARCHIVE_KEY);
+    renderArchive();
+    document.getElementById("archive-detail").style.display = "none";
 }
 
 // LocalStorage-Funktionen für Realwerte
@@ -665,6 +812,11 @@ function saveActualValues() {
     }
     
     saveActualValuesData(dateStr, values);
+    const archive = loadArchive();
+    if (archive[dateStr]) {
+        archive[dateStr].actual = values;
+        localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+    }
     closeActualValuesModal();
     
     // Dashboard neu rendern, um die Realwerte anzuzeigen

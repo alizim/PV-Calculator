@@ -15,6 +15,8 @@ Photovoltaikanlage in Norderstedt zugeschnitten.
 - Berücksichtigung von Modulanzahl, Neigung, Ausrichtung und String-Verlustfaktor
 - Eingabe von Realwerten je String mit prozentualem Vergleich zur Prognose
 - Speicherung der Realwerte lokal im Browser
+- Historisches Archiv für Wetter-, Einstrahlungs-, Prognose- und Realwertdaten
+- Archivansicht mit Tagesdetails und JSON-Export für spätere Modellauswertung
 - Automatische Nutzung einer lokalen oder der öffentlichen GitHub-Konfiguration
 
 ## Starten
@@ -46,9 +48,17 @@ Es gibt kein Build-System und keine Paketinstallation.
 	geändert und mit `Änderungen anwenden` neu berechnet werden. Die geänderte
 	Konfiguration bleibt im Browser gespeichert; `JSON-Werte wiederherstellen`
 	setzt sie auf die Werte aus `anlage.json` zurück.
+7. Im Bereich `Historisches Archiv` kann eine gespeicherte Tageszeile angeklickt
+	werden, um Wetter-, Strahlungs- und Realwertdetails zu sehen. Mit `Archiv
+	exportieren` werden alle Daten als JSON-Datei für eine spätere Auswertung oder
+	Modellverfeinerung heruntergeladen.
 
-Die gespeicherten Realwerte liegen ausschließlich im `localStorage` des jeweils
-verwendeten Browsers. Ein Löschen der Browserdaten entfernt diese Werte.
+Die gespeicherten Realwerte und Archivdaten liegen ausschließlich im `localStorage`
+des jeweils verwendeten Browsers. Das Archiv enthält pro Tag den Wettercode, die
+Maximaltemperatur, die horizontale Globalstrahlung, die berechneten String- und
+Gesamtprognosen sowie die stündlichen geneigten Einstrahlungswerte je Profil.
+Ein Löschen der Browserdaten entfernt diese Werte. Für eine dauerhafte Sicherung
+regelmäßig `Archiv exportieren` verwenden.
 
 ## Konfiguration
 
