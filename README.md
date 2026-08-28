@@ -7,7 +7,7 @@ Photovoltaikanlage in Norderstedt zugeschnitten.
 ## Funktionen
 
 - Anzeige von zwei vergangenen, dem aktuellen und zwei kommenden Tagen
-- Einmalige Anzeige der konfigurierten Stringdefinitionen oberhalb der Tageskarten
+- String-Konfiguration über einen Button oberhalb der Tageskarten einblendbar
 - Wetterdaten, Temperatur und horizontale Globalstrahlung
 - Sonnenhöchststand je Tag auf Basis von Breitengrad und Jahresdatum
 - Ertragsberechnung je String und als Gesamtsumme

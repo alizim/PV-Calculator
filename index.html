@@ -257,7 +257,7 @@
 <div class="container">
     <h1>☀️ Live PV-Ertragsprognose & Historie</h1>
     <div class="subtitle" id="anlage-subtitle">Echtzeitdaten via Open-Meteo API</div>
-    <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">Stringdefinitionen anzeigen</button>
+    <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">String-Konfiguration anzeigen</button>
     <div id="string-definitions" class="string-definitions" style="display: none;"></div>
     
     <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
@@ -392,7 +392,7 @@ function renderStringDefinitions(config) {
         return `<div class="string-definition"><strong>String ${string.string_id}: ${name}</strong> - ${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung || "Ausrichtung nicht angegeben"}<br><small>${gruppen}</small></div>`;
     }).join("");
 
-    definitions.innerHTML = `<h2>Stringdefinitionen</h2>${entries}`;
+    definitions.innerHTML = `<h2>String-Konfiguration</h2>${entries}`;
     document.getElementById("toggle-string-definitions").style.display = "inline-block";
 }
 
@@ -402,7 +402,7 @@ function toggleStringDefinitions() {
     const isVisible = definitions.style.display === "block";
 
     definitions.style.display = isVisible ? "none" : "block";
-    button.innerText = isVisible ? "Stringdefinitionen anzeigen" : "Stringdefinitionen ausblenden";
+    button.innerText = isVisible ? "String-Konfiguration anzeigen" : "String-Konfiguration ausblenden";
 }
 
 function renderDashboard(dailyData, config, irradianceProfiles) {
