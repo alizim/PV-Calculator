@@ -52,6 +52,8 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 - `system_steckbrief.module.leistung_pro_modul_w`: Modulleistung in Watt
 - `string_aufteilung`: Liste der Strings
 - `string_aufteilung[].string_id`: eindeutige ID des Strings
+- `string_aufteilung[].name`: optionaler Anzeigename; ohne Angabe wird
+	`String <string_id>` verwendet
 - `string_aufteilung[].verlustfaktor`: Faktor für System- und Stringverluste
 - `modul_gruppen_nach_neigung`: Modulgruppen mit Anzahl, Neigung und Ausrichtung
 - `modul_gruppen_nach_neigung[].verlustfaktor`: optionaler, gruppenspezifischer

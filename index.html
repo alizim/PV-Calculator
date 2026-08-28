@@ -395,7 +395,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
             });
             return {
                 id: string.string_id,
-                name: `String ${string.string_id}`,
+                name: string.name || `String ${string.string_id}`,
                 ausrichtung: string.haupt_ausrichtung,
                 module: string.gesamt_module_anzahl,
                 neigungen: gruppen.map(gruppe => `${gruppe.anzahl_module}x ${gruppe.neigung_grad}°`).join(" + "),
@@ -478,7 +478,7 @@ function openActualValuesModal(dateStr, cardIndex) {
             const inputGroup = document.createElement('div');
             inputGroup.className = 'input-group';
             inputGroup.innerHTML = `
-                <label>String ${stringId} (${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung}):</label>
+                <label>${string.name || `String ${stringId}`} (${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung}):</label>
                 <input type="number" step="0.01" id="string-${stringId}-input" value="${currentValue}" placeholder="z.B. 22.85" />
             `;
             stringInputsDiv.appendChild(inputGroup);

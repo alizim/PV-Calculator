@@ -37,6 +37,7 @@
   "string_aufteilung": [
     {
       "string_id": 1,
+      "name": "Norddach",
       "gesamt_module_anzahl": 13,
       "haupt_ausrichtung": "Nordnordwest (NNW)",
       "verlustfaktor": 0.39,
@@ -60,6 +61,7 @@
     },
     {
       "string_id": 2,
+      "name": "Süddach rechts",
       "gesamt_module_anzahl": 8,
       "haupt_ausrichtung": "Südsüdost (SSO)",
       "verlustfaktor": 0.85,
@@ -83,6 +85,7 @@
     },
     {
       "string_id": 3,
+      "name": "Süddach links und Fassade",
       "gesamt_module_anzahl": 11,
       "haupt_ausrichtung": "Südsüdost (SSO) + Wand",
       "verlustfaktor": 0.85,
