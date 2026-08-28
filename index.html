@@ -246,9 +246,9 @@
     </div>
 </div>
 
+<script src="calc.js"></script>
 <script>
 let anlagenKonfiguration;
-const SYSTEMVERLUSTFAKTOR = 0.85;
 const KONFIGURATIONS_URLEN = [
     "./anlage.json",
     "https://raw.githubusercontent.com/alizim/PV-Calculator/main/anlage.json"
@@ -260,15 +260,6 @@ const labelNames = { "-2": "Vorgestern", "-1": "Gestern", "0": "Heute", "1": "Mo
 // Hilfsfunktion zur Formatierung von Date-Objekten zu YYYY-MM-DD
 function formatDate(date) {
     return date.toISOString().split('T')[0];
-}
-
-function getAzimut(gruppe) {
-    const azimut = Number(gruppe.azimut_grad);
-    if (!Number.isFinite(azimut)) {
-        throw new Error(`Ungültiger Azimutwert: ${gruppe.azimut_grad}`);
-    }
-
-    return ((azimut + 180) % 360 + 360) % 360 - 180;
 }
 
 function getDateRange() {
@@ -299,35 +290,6 @@ async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
     }));
 
     return profile;
-}
-
-function getDailyIrradiance(hourlyData, date) {
-    const day = date.slice(0, 10);
-    return hourlyData.time.reduce((summe, timestamp, index) =>
-        timestamp.startsWith(day) ? summe + (hourlyData.global_tilted_irradiance[index] || 0) : summe, 0
-    ) / 1000;
-}
-
-function getDayOfYear(date) {
-    const startOfYear = new Date(date.getFullYear(), 0, 0);
-    return Math.floor((date - startOfYear) / 86400000);
-}
-
-function getSolarNoonElevation(date, latitude) {
-    const dayOfYear = getDayOfYear(date);
-    const declination = 23.44 * Math.sin((2 * Math.PI * (dayOfYear - 81)) / 365);
-    return 90 - Math.abs(latitude - declination);
-}
-
-function getSolarIncidenceAngle(date, gruppe, latitude) {
-    const solarElevation = getSolarNoonElevation(date, latitude);
-    const solarZenith = (90 - solarElevation) * Math.PI / 180;
-    const moduleTilt = Number(gruppe.neigung_grad) * Math.PI / 180;
-    const moduleAzimuth = getAzimut(gruppe) * Math.PI / 180;
-    const cosine = Math.cos(solarZenith) * Math.cos(moduleTilt) +
-        Math.sin(solarZenith) * Math.sin(moduleTilt) * Math.cos(moduleAzimuth);
-
-    return Math.acos(Math.max(-1, Math.min(1, cosine))) * 180 / Math.PI;
 }
 
 async function fetchAndCalculate() {
@@ -401,36 +363,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         const weatherType = getWeatherSymbol(dailyData.weather_code[i]);
         const solarNoonElevation = getSolarNoonElevation(dateRaw, config.koordinaten.latitude);
 
-        // Jede Modulgruppe wird mit ihrer eigenen geneigten Einstrahlung berechnet.
-        const modulLeistung_kWp = config.system_steckbrief.module.leistung_pro_modul_w / 1000;
-        const stringErtraege = config.string_aufteilung.map(string => {
-            // String-spezifischer Verlustfaktor oder Standard verwenden
-            const stringVerlustfaktor = string.verlustfaktor !== undefined ? string.verlustfaktor : SYSTEMVERLUSTFAKTOR;
-            
-            const gruppen = string.modul_gruppen_nach_neigung.map(gruppe => {
-                const leistung_kWp = gruppe.anzahl_module * modulLeistung_kWp;
-                const azimut = getAzimut(gruppe);
-                const irradiance = getDailyIrradiance(
-                    irradianceProfiles.get(`${gruppe.neigung_grad}:${azimut}`),
-                    dailyData.time[i]
-                );
-                return {
-                    ...gruppe,
-                    winkel: getSolarIncidenceAngle(dateRaw, gruppe, config.koordinaten.latitude),
-                    ertrag: irradiance * leistung_kWp *
-                        (gruppe.verlustfaktor !== undefined ? gruppe.verlustfaktor : stringVerlustfaktor)
-                };
-            });
-            return {
-                id: string.string_id,
-                name: string.name || `String ${string.string_id}`,
-                ausrichtung: string.haupt_ausrichtung,
-                module: string.gesamt_module_anzahl,
-                neigungen: gruppen.map(gruppe => `${gruppe.anzahl_module}x ${gruppe.neigung_grad}° / ${gruppe.winkel.toFixed(1)}° Einfall`).join(" + "),
-                ertrag: gruppen.reduce((summe, gruppe) => summe + gruppe.ertrag, 0),
-                gruppen
-            };
-        });
+        const stringErtraege = calculateStringYields(dailyData.time[i], config, irradianceProfiles);
         const gesamtErtrag = stringErtraege.reduce((summe, string) => summe + string.ertrag, 0);
         const stringZeilen = stringErtraege.map(string =>
             `<div class="result-line"><span>${string.name} (${string.module} Module, ${string.ausrichtung}, ${string.neigungen}):</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`

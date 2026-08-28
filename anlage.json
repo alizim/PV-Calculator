@@ -4,6 +4,7 @@
     "latitude": 53.7065,
     "longitude": 10.0101
   },
+  "verlustfaktor_standard": 0.85,
   "system_steckbrief": {
     "installierte_leistung_kwp": 15.36,
     "module": {

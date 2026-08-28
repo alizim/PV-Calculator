@@ -51,6 +51,8 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 - `standort`: Anzeige des Anlagenstandorts
 - `koordinaten.latitude`: Breitengrad des Anlagenstandorts
 - `koordinaten.longitude`: Längengrad des Anlagenstandorts
+- `verlustfaktor_standard`: Standardfaktor für System- und Stringverluste,
+  falls ein String keinen eigenen Faktor besitzt
 - `system_steckbrief.installierte_leistung_kwp`: installierte Gesamtleistung
 - `system_steckbrief.module.leistung_pro_modul_w`: Modulleistung in Watt
 - `string_aufteilung`: Liste der Strings
@@ -111,7 +113,8 @@ API-Zugriff zeigt das Dashboard eine Fehlermeldung an.
 
 ```text
 .
-├── index.html   # Oberfläche, Berechnung und API-Anbindung
+├── index.html   # Oberfläche und API-Anbindung
+├── calc.js      # PV-Berechnung und Sonnenstandslogik
 ├── anlage.json  # Anlagen- und String-Konfiguration
 └── README.md    # Projektdokumentation
 ```
