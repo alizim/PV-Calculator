@@ -247,10 +247,6 @@
 </div>
 
 <script>
-// Standortsdaten für Norderstedt
-const LAT = 53.7065;
-const LON = 10.0101;
-
 let anlagenKonfiguration;
 const SYSTEMVERLUSTFAKTOR = 0.85;
 const KONFIGURATIONS_URLEN = [
@@ -287,6 +283,7 @@ function getDateRange() {
 async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
     const gruppen = config.string_aufteilung.flatMap(string => string.modul_gruppen_nach_neigung);
     const profile = new Map();
+    const { latitude, longitude } = config.koordinaten;
 
     await Promise.all(gruppen.map(async gruppe => {
         const azimut = getAzimut(gruppe);
@@ -294,7 +291,7 @@ async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
         const profileKey = `${gruppe.neigung_grad}:${azimut}`;
         if (profile.has(profileKey)) return;
 
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=global_tilted_irradiance&tilt=${gruppe.neigung_grad}&azimuth=${azimut}&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=global_tilted_irradiance&tilt=${gruppe.neigung_grad}&azimuth=${azimut}&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Einstrahlungsprofil konnte nicht geladen werden (HTTP ${response.status})`);
         const data = await response.json();
@@ -316,14 +313,14 @@ function getDayOfYear(date) {
     return Math.floor((date - startOfYear) / 86400000);
 }
 
-function getSolarNoonElevation(date) {
+function getSolarNoonElevation(date, latitude) {
     const dayOfYear = getDayOfYear(date);
     const declination = 23.44 * Math.sin((2 * Math.PI * (dayOfYear - 81)) / 365);
-    return 90 - Math.abs(LAT - declination);
+    return 90 - Math.abs(latitude - declination);
 }
 
-function getSolarIncidenceAngle(date, gruppe) {
-    const solarElevation = getSolarNoonElevation(date);
+function getSolarIncidenceAngle(date, gruppe, latitude) {
+    const solarElevation = getSolarNoonElevation(date, latitude);
     const solarZenith = (90 - solarElevation) * Math.PI / 180;
     const moduleTilt = Number(gruppe.neigung_grad) * Math.PI / 180;
     const moduleAzimuth = getAzimut(gruppe) * Math.PI / 180;
@@ -358,7 +355,8 @@ async function fetchAndCalculate() {
         const { vonDatum, bisDatum } = getDateRange();
 
         // Open-Meteo API URL für Historie + Vorhersage kombiniert
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
+        const { latitude, longitude } = anlagenKonfiguration.koordinaten;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
 
         const [response, irradianceProfiles] = await Promise.all([
             fetch(url),
@@ -401,7 +399,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         const tempMax = dailyData.temperature_2m_max[i];
         const radSum = dailyData.shortwave_radiation_sum[i] / 3.6; // Horizontale Globalstrahlung zur Information
         const weatherType = getWeatherSymbol(dailyData.weather_code[i]);
-        const solarNoonElevation = getSolarNoonElevation(dateRaw);
+        const solarNoonElevation = getSolarNoonElevation(dateRaw, config.koordinaten.latitude);
 
         // Jede Modulgruppe wird mit ihrer eigenen geneigten Einstrahlung berechnet.
         const modulLeistung_kWp = config.system_steckbrief.module.leistung_pro_modul_w / 1000;
@@ -418,7 +416,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
                 );
                 return {
                     ...gruppe,
-                    winkel: getSolarIncidenceAngle(dateRaw, gruppe),
+                    winkel: getSolarIncidenceAngle(dateRaw, gruppe, config.koordinaten.latitude),
                     ertrag: irradiance * leistung_kWp *
                         (gruppe.verlustfaktor !== undefined ? gruppe.verlustfaktor : stringVerlustfaktor)
                 };

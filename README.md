@@ -49,6 +49,8 @@ verwendeten Browsers. Ein Löschen der Browserdaten entfernt diese Werte.
 Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 
 - `standort`: Anzeige des Anlagenstandorts
+- `koordinaten.latitude`: Breitengrad des Anlagenstandorts
+- `koordinaten.longitude`: Längengrad des Anlagenstandorts
 - `system_steckbrief.installierte_leistung_kwp`: installierte Gesamtleistung
 - `system_steckbrief.module.leistung_pro_modul_w`: Modulleistung in Watt
 - `string_aufteilung`: Liste der Strings
@@ -100,7 +102,7 @@ API-Daten und ersetzen keine geeichte Messung.
 - Browser mit aktiviertem JavaScript
 - Netzwerkzugriff auf `api.open-meteo.com`
 - Zugriff auf `anlage.json` über den gestarteten Webserver
-- Standortkoordinaten und API-Abfragen sind aktuell direkt in `index.html` hinterlegt
+- Standortkoordinaten und API-Abfragen werden aus `anlage.json` verwendet
 
 Open-Meteo liefert die Wetter- und Einstrahlungsdaten. Bei fehlendem Netzwerk- oder
 API-Zugriff zeigt das Dashboard eine Fehlermeldung an.

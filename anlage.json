@@ -1,5 +1,9 @@
 {
   "standort": "Norderstedt",
+  "koordinaten": {
+    "latitude": 53.7065,
+    "longitude": 10.0101
+  },
   "system_steckbrief": {
     "installierte_leistung_kwp": 15.36,
     "module": {
@@ -108,9 +112,9 @@
           "anzahl_module": 3,
           "neigung_grad": 90,
           "azimut_grad": -16.5,
-          "ausrichtung": "Ost-Außenwand (Klinkerwand)",
+          "ausrichtung": "Süd-Südost ausgerichtete Außenwand (Klinkerwand)",
           "verlustfaktor": 0.5,
-          "layout_detail": "3 vertikale Fassadenmodule an der roten Klinkerwand"
+          "layout_detail": "3 vertikale Fassadenmodule an der süd-südost ausgerichteten roten Klinkerwand"
         }
       ]
     }
