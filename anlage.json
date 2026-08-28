@@ -52,7 +52,7 @@
         {
           "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
-          "neigung_grad": 17,
+          "neigung_grad": 24,
           "ausrichtung": "Nordnordwest (NNW)",
           "layout_detail": "3 quer auf dem Gaubendach"
         }
@@ -75,7 +75,7 @@
         {
           "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
-          "neigung_grad": 17,
+          "neigung_grad": 24,
           "ausrichtung": "Südsüdost (SSO)",
           "layout_detail": "3 quer auf dem Gaubendach"
         }
