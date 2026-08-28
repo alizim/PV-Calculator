@@ -51,6 +51,7 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 - `system_steckbrief.installierte_leistung_kwp`: installierte Gesamtleistung
 - `system_steckbrief.module.leistung_pro_modul_w`: Modulleistung in Watt
 - `string_aufteilung`: Liste der Strings
+- `string_aufteilung[].string_id`: eindeutige ID des Strings
 - `string_aufteilung[].verlustfaktor`: Faktor für System- und Stringverluste
 - `modul_gruppen_nach_neigung`: Modulgruppen mit Anzahl, Neigung und Ausrichtung
 - `modul_gruppen_nach_neigung[].verlustfaktor`: optionaler, gruppenspezifischer
@@ -63,8 +64,11 @@ Die in `index.html` hinterlegten Ausrichtungsnamen müssen verwendet werden:
 - `Südsüdost (SSO)`
 - `Ost-Außenwand (Klinkerwand)`
 
-Bei Änderungen an der JSON-Datei sollte die Summe der Modulgruppen pro String
-mit `gesamt_module_anzahl` übereinstimmen.
+Die Oberfläche erzeugt Eingabefelder und Prognosezeilen automatisch aus
+`string_aufteilung`. Daher können beliebig viele Strings konfiguriert werden.
+Jeder String benötigt eine eindeutige `string_id`. Bei Änderungen an der
+JSON-Datei sollte die Summe der Modulgruppen pro String mit
+`gesamt_module_anzahl` übereinstimmen.
 
 ## Berechnung
 
