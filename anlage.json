@@ -100,6 +100,7 @@
           "anzahl_module": 3,
           "neigung_grad": 90,
           "ausrichtung": "Ost-Außenwand (Klinkerwand)",
+          "verlustfaktor": 0.5,
           "layout_detail": "3 vertikale Fassadenmodule an der roten Klinkerwand"
         }
       ]

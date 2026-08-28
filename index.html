@@ -389,7 +389,8 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
                 );
                 return {
                     ...gruppe,
-                    ertrag: irradiance * leistung_kWp * stringVerlustfaktor
+                    ertrag: irradiance * leistung_kWp *
+                        (gruppe.verlustfaktor !== undefined ? gruppe.verlustfaktor : stringVerlustfaktor)
                 };
             });
             return {

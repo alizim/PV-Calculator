@@ -53,6 +53,9 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 - `string_aufteilung`: Liste der Strings
 - `string_aufteilung[].verlustfaktor`: Faktor für System- und Stringverluste
 - `modul_gruppen_nach_neigung`: Modulgruppen mit Anzahl, Neigung und Ausrichtung
+- `modul_gruppen_nach_neigung[].verlustfaktor`: optionaler, gruppenspezifischer
+	Faktor; dieser überschreibt den String-Faktor, z. B. für verschattete
+	Fassadenmodule
 
 Die in `index.html` hinterlegten Ausrichtungsnamen müssen verwendet werden:
 
