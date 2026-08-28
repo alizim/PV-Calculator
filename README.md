@@ -58,7 +58,9 @@ Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 	Faktor; dieser überschreibt den String-Faktor, z. B. für verschattete
 	Fassadenmodule
 
-Die in `index.html` hinterlegten Ausrichtungsnamen müssen verwendet werden:
+Die Ausrichtungswerte werden in `index.html` über eine feste Azimut-Tabelle
+aufgelöst. Deshalb müssen sie in `anlage.json` exakt einem dieser Schlüssel
+entsprechen:
 
 - `Nordnordwest (NNW)`
 - `Südsüdost (SSO)`
