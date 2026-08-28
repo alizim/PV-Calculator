@@ -38,6 +38,20 @@
             margin: 0 0 10px;
             color: #34495e;
         }
+        .btn-toggle-definitions {
+            background-color: #3498db;
+            color: white;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .btn-toggle-definitions:hover {
+            background-color: #2980b9;
+        }
         .string-definition {
             padding: 6px 0;
             border-top: 1px solid #eee;
@@ -243,6 +257,7 @@
 <div class="container">
     <h1>☀️ Live PV-Ertragsprognose & Historie</h1>
     <div class="subtitle" id="anlage-subtitle">Echtzeitdaten via Open-Meteo API</div>
+    <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">Stringdefinitionen anzeigen</button>
     <div id="string-definitions" class="string-definitions" style="display: none;"></div>
     
     <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
@@ -378,7 +393,16 @@ function renderStringDefinitions(config) {
     }).join("");
 
     definitions.innerHTML = `<h2>Stringdefinitionen</h2>${entries}`;
-    definitions.style.display = "block";
+    document.getElementById("toggle-string-definitions").style.display = "inline-block";
+}
+
+function toggleStringDefinitions() {
+    const definitions = document.getElementById("string-definitions");
+    const button = document.getElementById("toggle-string-definitions");
+    const isVisible = definitions.style.display === "block";
+
+    definitions.style.display = isVisible ? "none" : "block";
+    button.innerText = isVisible ? "Stringdefinitionen anzeigen" : "Stringdefinitionen ausblenden";
 }
 
 function renderDashboard(dailyData, config, irradianceProfiles) {
