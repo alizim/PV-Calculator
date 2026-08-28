@@ -69,6 +69,10 @@
             margin-bottom: 15px;
             border-left: 3px solid #3498db;
         }
+        .sun-position {
+            color: #8a5a00;
+            margin-top: 4px;
+        }
         .results {
             border-top: 1px solid #eee;
             padding-top: 10px;
@@ -307,6 +311,28 @@ function getDailyIrradiance(hourlyData, date) {
     ) / 1000;
 }
 
+function getDayOfYear(date) {
+    const startOfYear = new Date(date.getFullYear(), 0, 0);
+    return Math.floor((date - startOfYear) / 86400000);
+}
+
+function getSolarNoonElevation(date) {
+    const dayOfYear = getDayOfYear(date);
+    const declination = 23.44 * Math.sin((2 * Math.PI * (dayOfYear - 81)) / 365);
+    return 90 - Math.abs(LAT - declination);
+}
+
+function getSolarIncidenceAngle(date, gruppe) {
+    const solarElevation = getSolarNoonElevation(date);
+    const solarZenith = (90 - solarElevation) * Math.PI / 180;
+    const moduleTilt = Number(gruppe.neigung_grad) * Math.PI / 180;
+    const moduleAzimuth = getAzimut(gruppe) * Math.PI / 180;
+    const cosine = Math.cos(solarZenith) * Math.cos(moduleTilt) +
+        Math.sin(solarZenith) * Math.sin(moduleTilt) * Math.cos(moduleAzimuth);
+
+    return Math.acos(Math.max(-1, Math.min(1, cosine))) * 180 / Math.PI;
+}
+
 async function fetchAndCalculate() {
     try {
         if (window.location.protocol === "file:") {
@@ -375,6 +401,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         const tempMax = dailyData.temperature_2m_max[i];
         const radSum = dailyData.shortwave_radiation_sum[i] / 3.6; // Horizontale Globalstrahlung zur Information
         const weatherType = getWeatherSymbol(dailyData.weather_code[i]);
+        const solarNoonElevation = getSolarNoonElevation(dateRaw);
 
         // Jede Modulgruppe wird mit ihrer eigenen geneigten Einstrahlung berechnet.
         const modulLeistung_kWp = config.system_steckbrief.module.leistung_pro_modul_w / 1000;
@@ -391,6 +418,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
                 );
                 return {
                     ...gruppe,
+                    winkel: getSolarIncidenceAngle(dateRaw, gruppe),
                     ertrag: irradiance * leistung_kWp *
                         (gruppe.verlustfaktor !== undefined ? gruppe.verlustfaktor : stringVerlustfaktor)
                 };
@@ -400,7 +428,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
                 name: string.name || `String ${string.string_id}`,
                 ausrichtung: string.haupt_ausrichtung,
                 module: string.gesamt_module_anzahl,
-                neigungen: gruppen.map(gruppe => `${gruppe.anzahl_module}x ${gruppe.neigung_grad}°`).join(" + "),
+                neigungen: gruppen.map(gruppe => `${gruppe.anzahl_module}x ${gruppe.neigung_grad}° / ${gruppe.winkel.toFixed(1)}° Einfall`).join(" + "),
                 ertrag: gruppen.reduce((summe, gruppe) => summe + gruppe.ertrag, 0),
                 gruppen
             };
@@ -421,7 +449,8 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
             <div class="weather-info">
                 <strong>${weatherType}</strong><br>
                 🌡️ Max: ${tempMax.toFixed(1)} °C<br>
-                🌤️ Strahlung: ${radSum.toFixed(2)} kWh/m²
+                🌤️ Strahlung: ${radSum.toFixed(2)} kWh/m²<br>
+                <span class="sun-position">☀️ Sonnenhöchststand: ${solarNoonElevation.toFixed(1)}°</span>
             </div>
 
             <div class="results">

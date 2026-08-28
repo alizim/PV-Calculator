@@ -8,6 +8,7 @@ Photovoltaikanlage in Norderstedt zugeschnitten.
 
 - Anzeige von zwei vergangenen, dem aktuellen und zwei kommenden Tagen
 - Wetterdaten, Temperatur und horizontale Globalstrahlung
+- Sonnenhöchststand je Tag auf Basis von Breitengrad und Jahresdatum
 - Ertragsberechnung je String und als Gesamtsumme
 - Berücksichtigung von Modulanzahl, Neigung, Ausrichtung und String-Verlustfaktor
 - Eingabe von Realwerten je String mit prozentualem Vergleich zur Prognose
@@ -82,6 +83,13 @@ Ertrag [kWh] = Einstrahlung [kWh/m²]
 			 × Modulanzahl × Modulleistung [kWp]
 			 × Verlustfaktor
 ```
+
+Die Anzeige des Sonnenhöchststands verwendet die jahresabhängige solare
+Deklination und den Anlagen-Breitengrad. Die Open-Meteo-Variable
+`global_tilted_irradiance` berücksichtigt diesen Sonnenstand bereits für jede
+Stunde sowie die konfigurierte Modulneigung und den Azimut. Deshalb wird der
+Sonnenhöchststand nicht zusätzlich als Ertragsmultiplikator verwendet, da dies
+die Einstrahlung doppelt gewichten würde.
 
 Die Anwendung ruft für den Zeitraum von vorgestern bis übermorgen sowohl
 Wetter- als auch geneigte Einstrahlungsdaten ab. Die Werte sind Prognosen bzw.
