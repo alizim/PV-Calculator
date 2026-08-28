@@ -92,6 +92,127 @@
             color: #7f8c8d;
             padding: 40px;
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        .modal.active {
+            display: block;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border: 1px solid #888;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .modal-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .modal-close:hover {
+            color: black;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #34495e;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        .button-group {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .button-group button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+        }
+        .btn-save {
+            background-color: #27ae60;
+            color: white;
+        }
+        .btn-save:hover {
+            background-color: #229954;
+        }
+        .btn-cancel {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .btn-cancel:hover {
+            background-color: #7f8c8d;
+        }
+        .btn-edit {
+            background-color: #3498db;
+            color: white;
+            padding: 5px 10px;
+            font-size: 0.85em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-edit:hover {
+            background-color: #2980b9;
+        }
+        .actual-values {
+            background: #e8f8f5;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #27ae60;
+            margin-bottom: 10px;
+        }
+        .actual-values.has-data {
+            display: block;
+        }
+        .actual-values.empty {
+            display: none;
+        }
+        .deviation {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .deviation.positive {
+            background-color: #d5f4e6;
+            color: #27ae60;
+        }
+        .deviation.negative {
+            background-color: #fadbd8;
+            color: #e74c3c;
+        }
     </style>
 </head>
 <body>
@@ -102,6 +223,23 @@
     
     <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
+</div>
+
+<!-- Modal für Realwerte eingeben -->
+<div id="actual-values-modal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeActualValuesModal()">&times;</span>
+        <div class="modal-header">Realwerte eingeben</div>
+        <div class="input-group">
+            <label>Datum:</label>
+            <input type="date" id="actual-date-input" />
+        </div>
+        <div id="string-inputs"></div>
+        <div class="button-group">
+            <button class="btn-cancel" onclick="closeActualValuesModal()">Abbrechen</button>
+            <button class="btn-save" onclick="saveActualValues()">Speichern</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -283,14 +421,168 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
                 ${stringZeilen}
                 <div class="result-line total-line"><span>Prognose Gesamt:</span> <span>${gesamtErtrag.toFixed(2)} kWh</span></div>
             </div>
+
+            <div id="actual-section-${i}" class="actual-values empty"></div>
+            
+            <div style="margin-top: 15px; text-align: center;">
+                <button class="btn-edit" onclick="openActualValuesModal('${dailyData.time[i]}', ${i})">Realwerte eingeben</button>
+            </div>
         `;
         grid.appendChild(card);
+        
+        // Nach dem Einfügen: Realwerte laden und anzeigen
+        displayActualValuesForDay(dailyData.time[i], stringErtraege, i);
+    }
     }
 
     // Loader ausblenden, Grid anzeigen
     document.getElementById("loading-text").style.display = "none";
     grid.style.display = "grid";
 }
+
+// LocalStorage-Funktionen für Realwerte
+function getActualValuesKey(dateStr) {
+    return `pv_actual_${dateStr}`;
+}
+
+function loadActualValues(dateStr) {
+    const key = getActualValuesKey(dateStr);
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : null;
+}
+
+function saveActualValuesData(dateStr, values) {
+    const key = getActualValuesKey(dateStr);
+    localStorage.setItem(key, JSON.stringify(values));
+}
+
+function openActualValuesModal(dateStr, cardIndex) {
+    const modal = document.getElementById('actual-values-modal');
+    const dateInput = document.getElementById('actual-date-input');
+    const stringInputsDiv = document.getElementById('string-inputs');
+    
+    dateInput.value = dateStr;
+    
+    // Dynamisch die Eingabefelder für Strings generieren
+    stringInputsDiv.innerHTML = '';
+    if (anlagenKonfiguration) {
+        anlagenKonfiguration.string_aufteilung.forEach((string, index) => {
+            const stringId = string.string_id;
+            const existingValues = loadActualValues(dateStr);
+            const currentValue = existingValues && existingValues[`string_${stringId}`] ? existingValues[`string_${stringId}`] : '';
+            
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'input-group';
+            inputGroup.innerHTML = `
+                <label>String ${stringId} (${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung}):</label>
+                <input type="number" step="0.01" id="string-${stringId}-input" value="${currentValue}" placeholder="z.B. 22.85" />
+            `;
+            stringInputsDiv.appendChild(inputGroup);
+        });
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeActualValuesModal() {
+    const modal = document.getElementById('actual-values-modal');
+    modal.classList.remove('active');
+}
+
+function saveActualValues() {
+    const dateStr = document.getElementById('actual-date-input').value;
+    if (!dateStr) {
+        alert('Bitte ein Datum auswählen');
+        return;
+    }
+    
+    const values = {};
+    if (anlagenKonfiguration) {
+        anlagenKonfiguration.string_aufteilung.forEach(string => {
+            const stringId = string.string_id;
+            const inputValue = document.getElementById(`string-${stringId}-input`).value;
+            if (inputValue) {
+                values[`string_${stringId}`] = parseFloat(inputValue);
+            }
+        });
+    }
+    
+    if (Object.keys(values).length === 0) {
+        alert('Bitte mindestens einen Wert eingeben');
+        return;
+    }
+    
+    saveActualValuesData(dateStr, values);
+    closeActualValuesModal();
+    
+    // Dashboard neu rendern, um die Realwerte anzuzeigen
+    fetchAndCalculate();
+}
+
+function displayActualValuesForDay(dateStr, stringErtraege, cardIndex) {
+    const actualValues = loadActualValues(dateStr);
+    const section = document.getElementById(`actual-section-${cardIndex}`);
+    
+    if (!actualValues) {
+        section.className = 'actual-values empty';
+        section.innerHTML = '';
+        return;
+    }
+    
+    section.className = 'actual-values has-data';
+    
+    let html = '<strong>📊 Realwerte & Vergleich:</strong><br>';
+    let totalActual = 0;
+    let totalForecast = 0;
+    
+    const actualLines = stringErtraege.map(string => {
+        const stringId = string.name.split(' ')[1]; // Extrahiert die Nummer aus "String X"
+        const forecastValue = string.ertrag;
+        const actualValue = actualValues[`string_${stringId}`];
+        
+        if (actualValue !== undefined) {
+            totalActual += actualValue;
+            totalForecast += forecastValue;
+            
+            const deviation = actualValue - forecastValue;
+            const deviationPercent = ((deviation / forecastValue) * 100).toFixed(1);
+            const deviationClass = deviation >= 0 ? 'positive' : 'negative';
+            const deviationSign = deviation >= 0 ? '+' : '';
+            
+            return `<div class="result-line">
+                <span>${string.name}:</span>
+                <span>${actualValue.toFixed(2)} kWh <span class="deviation ${deviationClass}">
+                ${deviationSign}${deviation.toFixed(2)} kWh (${deviationSign}${deviationPercent}%)</span></span>
+            </div>`;
+        }
+        return '';
+    }).join('');
+    
+    html += actualLines;
+    
+    if (totalActual > 0) {
+        const totalDeviation = totalActual - totalForecast;
+        const totalDeviationPercent = ((totalDeviation / totalForecast) * 100).toFixed(1);
+        const totalDeviationClass = totalDeviation >= 0 ? 'positive' : 'negative';
+        const totalDeviationSign = totalDeviation >= 0 ? '+' : '';
+        
+        html += `<div class="result-line total-line">
+            <span>Realwert Gesamt:</span>
+            <span>${totalActual.toFixed(2)} kWh <span class="deviation ${totalDeviationClass}">
+            ${totalDeviationSign}${totalDeviation.toFixed(2)} kWh (${totalDeviationSign}${totalDeviationPercent}%)</span></span>
+        </div>`;
+    }
+    
+    section.innerHTML = html;
+}
+
+// Modal-Closes bei Klick außerhalb
+window.onclick = function(event) {
+    const modal = document.getElementById('actual-values-modal');
+    if (event.target === modal) {
+        modal.classList.remove('active');
+    }
+};
 
 // Beim Start die API abfragen
 window.onload = fetchAndCalculate;
