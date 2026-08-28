@@ -64,6 +64,12 @@ Die in `index.html` hinterlegten Ausrichtungsnamen müssen verwendet werden:
 - `Südsüdost (SSO)`
 - `Ost-Außenwand (Klinkerwand)`
 
+Aktuell ist die Anlage so aufgeteilt:
+
+- String 1: 13 Module, `Nordnordwest (NNW)`
+- String 2: 8 Module, `Südsüdost (SSO)`
+- String 3: 11 Module, `Südsüdost (SSO) + Wand`
+
 Die Oberfläche erzeugt Eingabefelder und Prognosezeilen automatisch aus
 `string_aufteilung`. Daher können beliebig viele Strings konfiguriert werden.
 Jeder String benötigt eine eindeutige `string_id`. Bei Änderungen an der
