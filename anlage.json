@@ -38,7 +38,7 @@
     {
       "string_id": 1,
       "gesamt_module_anzahl": 13,
-      "haupt_ausrichtung": "Nordnordost (NNO)",
+      "haupt_ausrichtung": "Nordnordwest (NNW)",
       "verlustfaktor": 0.39,
       "verhalten": "Starker Diffuslicht-Lieferant. Fängt im Hochsommer (21.04. – 20.08.) spätes direktes Abendlicht aus Nordwesten ein.",
       "modul_gruppen_nach_neigung": [
@@ -46,14 +46,14 @@
           "beschreibung": "Steildachmodule (links, rechts, mittig über Gaube)",
           "anzahl_module": 10,
           "neigung_grad": 48,
-          "ausrichtung": "Nordnordost (NNO)",
+          "ausrichtung": "Nordnordwest (NNW)",
           "layout_detail": "6 links, 3 rechts (vertikal untereinander), 1 mittig über der Nordgaube"
         },
         {
           "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
           "neigung_grad": 17,
-          "ausrichtung": "Nordnordost (NNO)",
+          "ausrichtung": "Nordnordwest (NNW)",
           "layout_detail": "3 quer auf dem Gaubendach"
         }
       ]
@@ -61,7 +61,7 @@
     {
       "string_id": 2,
       "gesamt_module_anzahl": 8,
-      "haupt_ausrichtung": "Südsüdwest (SSW)",
+      "haupt_ausrichtung": "Südsüdost (SSO)",
       "verlustfaktor": 0.85,
       "verhalten": "Standard-Erzeugung laut Ausrichtung",
       "modul_gruppen_nach_neigung": [
@@ -69,14 +69,14 @@
           "beschreibung": "Steildachmodule (über und neben Gaube)",
           "anzahl_module": 5,
           "neigung_grad": 48,
-          "ausrichtung": "Südsüdwest (SSW)",
+          "ausrichtung": "Südsüdost (SSO)",
           "layout_detail": "2 über der Südgaube, 3 rechts daneben (vertikal untereinander)"
         },
         {
           "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
           "neigung_grad": 17,
-          "ausrichtung": "Südsüdwest (SSW)",
+          "ausrichtung": "Südsüdost (SSO)",
           "layout_detail": "3 quer auf dem Gaubendach"
         }
       ]
@@ -84,7 +84,7 @@
     {
       "string_id": 3,
       "gesamt_module_anzahl": 11,
-      "haupt_ausrichtung": "Südsüdwest (SSW) + Wand",
+      "haupt_ausrichtung": "Südsüdost (SSO) + Wand",
       "verlustfaktor": 0.85,
       "verhalten": "Explodiert vormittags schlagartig nach oben, sobald die Sonne den morgendlichen Eigenschatten der Gaube und den Schatten eines östlichen Baumes vor der Fassade verlässt.",
       "modul_gruppen_nach_neigung": [
@@ -92,7 +92,7 @@
           "beschreibung": "Steildachmodule links neben Gaube",
           "anzahl_module": 8,
           "neigung_grad": 48,
-          "ausrichtung": "Südsüdwest (SSW)",
+          "ausrichtung": "Südsüdost (SSO)",
           "layout_detail": "8 Steildachmodule links neben der Gaube (3 Spalten: 3, 3, 2)"
         },
         {
