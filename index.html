@@ -330,7 +330,7 @@ async function fetchAndCalculate() {
         if (!data.daily) throw new Error("Fehler beim Laden der API-Daten");
 
         document.getElementById("anlage-subtitle").innerText =
-            `Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp | Echtzeitdaten via Open-Meteo API`;
+            `${anlagenKonfiguration.beschreibung} | Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp`;
         renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
     } catch (error) {
         document.getElementById("loading-text").innerText = "Fehler beim Laden der Live-Daten: " + error.message;
@@ -366,7 +366,7 @@ function renderDashboard(dailyData, config, irradianceProfiles) {
         const stringErtraege = calculateStringYields(dailyData.time[i], config, irradianceProfiles);
         const gesamtErtrag = stringErtraege.reduce((summe, string) => summe + string.ertrag, 0);
         const stringZeilen = stringErtraege.map(string =>
-            `<div class="result-line"><span>${string.name} (${string.module} Module, ${string.ausrichtung}, ${string.neigungen}):</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
+            `<div class="result-line"><span>${string.name}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
         ).join("");
 
         const isTodayClass = dayOffset === 0 ? 'today' : '';

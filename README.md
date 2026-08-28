@@ -49,6 +49,7 @@ verwendeten Browsers. Ein Löschen der Browserdaten entfernt diese Werte.
 Die Anlagendaten stehen in [anlage.json](anlage.json). Wichtige Felder sind:
 
 - `standort`: Anzeige des Anlagenstandorts
+- `beschreibung`: Beschreibung der Anlage für den Kopfbereich
 - `koordinaten.latitude`: Breitengrad des Anlagenstandorts
 - `koordinaten.longitude`: Längengrad des Anlagenstandorts
 - `verlustfaktor_standard`: Standardfaktor für System- und Stringverluste,
