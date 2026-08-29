@@ -520,6 +520,7 @@
                 <div id="settings-menu" class="settings-menu" role="menu" aria-label="Settings menu">
                     <button id="download-template-btn" class="settings-menu-item" type="button" onclick="downloadTemplate()">Download template</button>
                     <button id="export-plant-btn" class="settings-menu-item" type="button" onclick="exportPlantConfiguration()">Export plant</button>
+                    <button id="clear-legacy-storage-btn" class="settings-menu-item" type="button" onclick="clearLegacyStorageData()">Clear legacy storage</button>
                     <label id="upload-json-btn" class="settings-menu-item upload-menu-item" role="menuitem">
                         <span>Upload JSON</span>
                         <input id="config-upload" type="file" accept=".json,application/json" />
@@ -833,6 +834,38 @@ function migrateLegacyStorageKeys() {
 
     updateMigrationNotice();
     return legacyDetected;
+}
+
+function clearLegacyStorageData() {
+    const legacyKeys = [
+        "pv_uploaded_configuration_v2",
+        "pv_uploaded_configuration_legacy",
+        "pv_uploaded_configuration_old",
+        "pv_string_configuration_v2",
+        "pv_string_configuration_legacy",
+        "pv_string_configuration_old",
+        "pv_historical_archive_v2",
+        "pv_historical_archive_legacy",
+        "pv_historical_archive_old"
+    ];
+
+    const actualLegacyKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
+    const allLegacyKeys = [...legacyKeys, ...actualLegacyKeys];
+    const matchedKeys = allLegacyKeys.filter(key => localStorage.getItem(key) !== null);
+
+    if (matchedKeys.length === 0) {
+        updateMigrationNotice();
+        return;
+    }
+
+    const confirmed = window.confirm(getText("confirmClearLegacyStorage"));
+    if (!confirmed) return;
+
+    matchedKeys.forEach(key => localStorage.removeItem(key));
+    updateMigrationNotice();
+    if (typeof fetchAndCalculate === "function") {
+        fetchAndCalculate();
+    }
 }
 
 function toggleSettingsMenu() {
