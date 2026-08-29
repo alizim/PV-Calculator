@@ -13,32 +13,7 @@
       "modell": "AIKO ABC 480W Premium",
       "leistung_pro_modul_w": 480,
       "optimierer": "Alle 32 Module mit Leistungsoptimierern ausgestattet"
-    },
-    "wechselrichter": {
-      "modell": "Sigenergy 17 kW Hybrid-Wechselrichter",
-      "leistung_kw": 17
-    },
-    "speicher": {
-      "modell": "SigenStor Batteriespeicher",
-      "typ": "LiFePO4",
-      "kapazitaet_kwh": 9
-    },
-    "infrastruktur": {
-      "gateway": "Sigen Energy Gateway (Notstrom / 3-Phasen-Inselbetrieb)",
-      "wallbox": "Sigenergy 11 kW AC-Wallbox (ohne festes Kabel, Ost-Außenwand)",
-      "erdung": "Tiefenerder (Erdspieß)",
-      "zaehlerplatz": "APZ-Feld nach VDE-AR-N 4100"
-    },
-    "waermesystem_geplant": {
-      "waermepumpe_kw": 7,
-      "system": "Heizkörper im Bestand",
-      "warmwasserspeicher_l": 290,
-      "heizungspuffer_l": 70
     }
-  },
-  "geometrie_basiserwartung": {
-    "dachdrehung_grad": 20,
-    "drehrichtung": "im Uhrzeigersinn (gegenüber West-Ost-Achse)"
   },
   "string_aufteilung": [
     {
@@ -47,23 +22,16 @@
       "gesamt_module_anzahl": 13,
       "haupt_ausrichtung": "Nordnordwest (NNW)",
       "verlustfaktor": 0.39,
-      "verhalten": "Starker Diffuslicht-Lieferant. Fängt im Hochsommer (21.04. – 20.08.) spätes direktes Abendlicht aus Nordwesten ein.",
       "modul_gruppen_nach_neigung": [
         {
-          "beschreibung": "Steildachmodule (links, rechts, mittig über Gaube)",
           "anzahl_module": 10,
           "neigung_grad": 49,
-          "azimut_grad": 163.5,
-          "ausrichtung": "Nordnordwest (NNW)",
-          "layout_detail": "6 links, 3 rechts (vertikal untereinander), 1 mittig über der Nordgaube"
+          "azimut_grad": 163.5
         },
         {
-          "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
           "neigung_grad": 24,
-          "azimut_grad": 163.5,
-          "ausrichtung": "Nordnordwest (NNW)",
-          "layout_detail": "3 quer auf dem Gaubendach"
+          "azimut_grad": 163.5
         }
       ]
     },
@@ -73,23 +41,16 @@
       "gesamt_module_anzahl": 8,
       "haupt_ausrichtung": "Südsüdost (SSO)",
       "verlustfaktor": 0.85,
-      "verhalten": "Standard-Erzeugung laut Ausrichtung",
       "modul_gruppen_nach_neigung": [
         {
-          "beschreibung": "Steildachmodule (über und neben Gaube)",
           "anzahl_module": 5,
           "neigung_grad": 49,
-          "azimut_grad": -16.5,
-          "ausrichtung": "Südsüdost (SSO)",
-          "layout_detail": "2 über der Südgaube, 3 rechts daneben (vertikal untereinander)"
+          "azimut_grad": -16.5
         },
         {
-          "beschreibung": "Gaubendachmodule",
           "anzahl_module": 3,
           "neigung_grad": 24,
-          "azimut_grad": -16.5,
-          "ausrichtung": "Südsüdost (SSO)",
-          "layout_detail": "3 quer auf dem Gaubendach"
+          "azimut_grad": -16.5
         }
       ]
     },
@@ -99,43 +60,20 @@
       "gesamt_module_anzahl": 11,
       "haupt_ausrichtung": "Südsüdost (SSO) + Wand",
       "verlustfaktor": 0.85,
-      "verhalten": "Explodiert vormittags schlagartig nach oben, sobald die Sonne den morgendlichen Eigenschatten der Gaube und den Schatten eines östlichen Baumes vor der Fassade verlässt.",
       "modul_gruppen_nach_neigung": [
         {
-          "beschreibung": "Steildachmodule links neben Gaube",
           "anzahl_module": 8,
           "neigung_grad": 49,
-          "azimut_grad": -16.5,
-          "ausrichtung": "Südsüdost (SSO)",
-          "layout_detail": "8 Steildachmodule links neben der Gaube (3 Spalten: 3, 3, 2)"
+          "azimut_grad": -16.5
         },
         {
-          "beschreibung": "Fassadenmodule",
           "anzahl_module": 3,
           "neigung_grad": 90,
           "azimut_grad": -16.5,
-          "ausrichtung": "Süd-Südost ausgerichtete Außenwand (Klinkerwand)",
-          "verlustfaktor": 0.5,
-          "layout_detail": "3 vertikale Fassadenmodule an der süd-südost ausgerichteten roten Klinkerwand"
+          "verlustfaktor": 0.5
         }
       ]
     }
-  ],
-  "leistungswerte_und_schatten_modell": {
-    "cool_boost_wechselwetter": "Bei dynamischem Wolkenflug mit kühlem Wind extreme Leistungssprünge durch kalte Zellen (z. B. 46,5 kWh Tagesertrag).",
-    "hitze_peak_hochsommer": {
-      "beschreibung": "Bei wolkenlosen Tagen über 30 °C Aufheizung der Zellen auf ca. 60 °C. Spiegelglatte Kurve.",
-      "peak_leistung_thermisch_kw": "7.8 - 8.5",
-      "tagesertrag_kwh": "55 - 58"
-    },
-    "vormittags_zuendung": {
-      "uhrzeit_ca": "09:45 Uhr",
-      "effekt": "Schlagartiger Anstieg von String 3 nach Verlassen des Gauben- und Baumschattens."
-    },
-    "nachbarschafts_und_efeu_schatten": {
-      "westliches_nachbarhaus": "7m Abstand, gleiche Höhe. Stört im Sommer nicht. Im Kernwinter (Nov–Jan) Vollschatten auf der Fassade ab 11:30 Uhr. Freies Vormittagsfenster (09:30–11:15 Uhr) sichert Winter-Energie.",
-      "efeu_schatten": "Ab 15:45 Uhr im Spätsommer seitlicher Schatten auf dem ersten Fassadenmodul."
-    }
-  }
+  ]
 }
 

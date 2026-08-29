@@ -16,10 +16,28 @@
             max-width: 1200px;
             margin: 0 auto;
         }
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            position: relative;
+        }
         h1 {
             color: #2c3e50;
             text-align: center;
             margin-bottom: 5px;
+        }
+        #language-switch {
+            position: absolute;
+            right: 0;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 999px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-weight: bold;
         }
         .subtitle {
             text-align: center;
@@ -379,23 +397,26 @@
 <body>
 
 <div class="container">
-    <h1>☀️ Live PV-Ertragsprognose & Historie</h1>
-    <div class="subtitle" id="anlage-subtitle">Echtzeitdaten via Open-Meteo API</div>
+    <div class="header-row">
+        <h1 id="app-title" data-default="☀️ Live PV-Ertragsprognose & Historie">☀️ Live PV-Ertragsprognose & Historie</h1>
+        <button id="language-switch" type="button" onclick="toggleLanguage()" aria-label="Switch language">EN</button>
+    </div>
+    <div class="subtitle" id="anlage-subtitle" data-default="Echtzeitdaten via Open-Meteo API">Echtzeitdaten via Open-Meteo API</div>
     <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">String-Konfiguration anzeigen</button>
     <div id="string-definitions" class="string-definitions" style="display: none;"></div>
     
-    <div id="loading-text" class="loading">Lade Live-Wetterdaten und berechne Erträge...</div>
+    <div id="loading-text" class="loading" data-default="Lade Live-Wetterdaten und berechne Erträge...">Lade Live-Wetterdaten und berechne Erträge...</div>
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
 
     <section class="archive" aria-labelledby="archive-title">
         <div class="archive-header">
-            <h2 id="archive-title">Historisches Archiv</h2>
+            <h2 id="archive-title" data-default="Historisches Archiv">Historisches Archiv</h2>
             <div class="archive-actions">
                 <button class="btn-archive-export" type="button" onclick="exportArchive()">Archiv exportieren</button>
                 <button class="btn-archive-clear" type="button" onclick="clearArchive()">Archiv löschen</button>
             </div>
         </div>
-        <p id="archive-empty" class="archive-empty">Noch keine historischen API-Daten gespeichert.</p>
+        <p id="archive-empty" class="archive-empty" data-default="Noch keine historischen API-Daten gespeichert.">Noch keine historischen API-Daten gespeichert.</p>
         <div class="archive-table-wrapper">
             <table id="archive-table" style="display: none;">
                 <thead><tr><th>Datum</th><th>Wetter</th><th>Prognose</th><th>Realwert</th><th>Abweichung</th></tr></thead>
@@ -404,10 +425,10 @@
         </div>
         <div id="archive-detail" class="archive-detail" style="display: none;"></div>
         <div id="archive-browser" class="archive-browser" style="display: none;">
-            <strong>Archivkarte:</strong>
-            <button type="button" onclick="showPreviousArchiveDay()" aria-label="Vorheriger Archivtag">&larr;</button>
+            <strong id="archive-browser-label">Archivkarte:</strong>
+            <button id="archive-prev-button" type="button" onclick="showPreviousArchiveDay()" aria-label="Vorheriger Archivtag">&larr;</button>
             <select id="archive-date-select" onchange="showSelectedArchiveDay()" aria-label="Archivdatum"></select>
-            <button type="button" onclick="showNextArchiveDay()" aria-label="Nächster Archivtag">&rarr;</button>
+            <button id="archive-next-button" type="button" onclick="showNextArchiveDay()" aria-label="Nächster Archivtag">&rarr;</button>
             <button class="btn-recalculate" type="button" onclick="recalculateSelectedArchiveDay()">Prognose neu berechnen</button>
         </div>
         <div id="archive-cards" class="grid archive-cards" style="display: none;"></div>
@@ -418,9 +439,9 @@
 <div id="actual-values-modal" class="modal">
     <div class="modal-content">
         <span class="modal-close" onclick="closeActualValuesModal()">&times;</span>
-        <div class="modal-header">Realwerte eingeben</div>
+        <div id="actual-values-title" class="modal-header">Realwerte eingeben</div>
         <div class="input-group">
-            <label>Datum:</label>
+            <label id="actual-date-label">Datum:</label>
             <input type="date" id="actual-date-input" />
         </div>
         <div id="string-inputs"></div>
@@ -431,6 +452,7 @@
     </div>
 </div>
 
+<script src="i18n.js"></script>
 <script src="calc.js"></script>
 <script>
 let anlagenKonfiguration;
@@ -441,7 +463,7 @@ const KONFIGURATIONS_URLEN = [
 ];
 
 const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-const labelNames = { "-2": "Vorgestern", "-1": "Gestern", "0": "Heute", "1": "Morgen", "2": "Übermorgen" };
+const labelNames = { "-2": getText("labels.dayBeforeYesterday"), "-1": getText("labels.yesterday"), "0": getText("labels.today"), "1": getText("labels.tomorrow"), "2": getText("labels.dayAfterTomorrow") };
 
 // Hilfsfunktion zur Formatierung von Date-Objekten zu YYYY-MM-DD
 function formatDate(date) {
@@ -481,7 +503,7 @@ async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
 async function fetchAndCalculate() {
     try {
         if (window.location.protocol === "file:") {
-            throw new Error("Bitte index.html über einen Webserver öffnen, damit anlage.json geladen werden kann");
+            throw new Error(getText("fileServerWarning"));
         }
 
         if (!anlagenKonfiguration) {
@@ -520,7 +542,7 @@ async function fetchAndCalculate() {
         if (!response.ok) throw new Error(`Wetterdaten konnten nicht geladen werden (HTTP ${response.status})`);
         const data = await response.json();
 
-        if (!data.daily) throw new Error("Fehler beim Laden der API-Daten");
+        if (!data.daily) throw new Error(getText("apiDataError"));
 
         const anlagenBeschreibung = anlagenKonfiguration.beschreibung || "Photovoltaikanlage";
         document.getElementById("anlage-subtitle").innerText =
@@ -528,17 +550,18 @@ async function fetchAndCalculate() {
         renderStringDefinitions(anlagenKonfiguration);
         renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
         renderArchive();
+        applyUiTranslations();
     } catch (error) {
-        document.getElementById("loading-text").innerText = "Fehler beim Laden der Live-Daten: " + error.message;
+        document.getElementById("loading-text").innerText = getText("errorLoading") + error.message;
     }
 }
 
 function getWeatherSymbol(code) {
     // WMO Weather Codes zu Emojis
-    if (code <= 1) return "☀️ Sonne";
-    if (code <= 3) return "🌗 Wechselhaft";
-    if (code >= 51) return "🌧️ Regen";
-    return "☁️ Bewölkt";
+    if (code <= 1) return getText("weather.sun");
+    if (code <= 3) return getText("weather.variable");
+    if (code >= 51) return getText("weather.rain");
+    return getText("weather.cloud");
 }
 
 function renderStringDefinitions(config) {
@@ -564,15 +587,17 @@ function renderStringDefinitions(config) {
         return `<section class="configuration-string"><h3>String ${string.string_id}: ${string.name || `String ${string.string_id}`}</h3>${groups}</section>`;
     }).join("");
 
-    definitions.innerHTML = `<h2>String-Konfiguration</h2>
+    definitions.innerHTML = `<h2>${getText("stringConfigTitle")}</h2>
         <div class="configuration-actions">
-            <button class="btn-apply-configuration" type="button" onclick="applyStringConfiguration()">Änderungen anwenden</button>
-            <button class="btn-reset-configuration" type="button" onclick="resetStringConfiguration()">JSON-Werte wiederherstellen</button>
+            <button class="btn-apply-configuration" type="button" onclick="applyStringConfiguration()">${getText("applyChanges")}</button>
+            <button class="btn-reset-configuration" type="button" onclick="resetStringConfiguration()">${getText("resetConfig")}</button>
         </div>
         ${editor}
         <p id="configuration-status" class="configuration-status" aria-live="polite"></p>
         <hr>${entries}`;
     document.getElementById("toggle-string-definitions").style.display = "inline-block";
+    document.getElementById("toggle-string-definitions").dataset.visible = "false";
+    document.getElementById("toggle-string-definitions").textContent = getText("toggleStrings");
 }
 
 function applyStringConfiguration() {
@@ -583,12 +608,12 @@ function applyStringConfiguration() {
         const value = Number(input.value);
         if (!Number.isFinite(value)) {
             input.focus();
-            alert("Bitte nur gültige Zahlen in der String-Konfiguration verwenden.");
+            alert(getText("invalidNumber"));
             return;
         }
         if (input.dataset.field === "verlustfaktor" && (value < 0 || value > 1)) {
             input.focus();
-            alert("Der Verlustfaktor muss zwischen 0 und 1 liegen.");
+            alert(getText("invalidLossFactor"));
             return;
         }
         const string = changedConfiguration.string_aufteilung.find(item => String(item.string_id) === input.dataset.stringId);
@@ -597,7 +622,7 @@ function applyStringConfiguration() {
 
     anlagenKonfiguration = changedConfiguration;
     localStorage.setItem("pv_string_configuration", JSON.stringify(anlagenKonfiguration.string_aufteilung));
-    document.getElementById("configuration-status").innerText = "Änderungen werden geladen...";
+    document.getElementById("configuration-status").innerText = getText("changesLoading");
     fetchAndCalculate();
 }
 
@@ -605,7 +630,7 @@ function resetStringConfiguration() {
     anlagenKonfiguration = structuredClone(anlagenKonfigurationOriginal);
     localStorage.removeItem("pv_string_configuration");
     renderStringDefinitions(anlagenKonfiguration);
-    document.getElementById("configuration-status").innerText = "JSON-Werte wiederhergestellt.";
+    document.getElementById("configuration-status").innerText = getText("jsonRestored");
     fetchAndCalculate();
 }
 
@@ -615,7 +640,8 @@ function toggleStringDefinitions() {
     const isVisible = definitions.style.display === "block";
 
     definitions.style.display = isVisible ? "none" : "block";
-    button.innerText = isVisible ? "String-Konfiguration anzeigen" : "String-Konfiguration ausblenden";
+    button.dataset.visible = String(!isVisible);
+    button.innerText = isVisible ? getText("toggleStrings") : getText("toggleStringsHide");
 }
 
 function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dashboard-grid", persistArchive = true) {
@@ -641,7 +667,7 @@ function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dash
             saveArchiveRecord(dailyData.time[i], dailyData, i, stringErtraege, gesamtErtrag, irradianceProfiles);
         }
         const stringZeilen = stringErtraege.map(string =>
-            `<div class="result-line"><span>String ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
+            `<div class="result-line"><span>${getText("labels.string")} ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
         ).join("");
 
         const isTodayClass = dayOffset === 0 ? 'today' : '';
@@ -650,24 +676,24 @@ function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dash
         card.className = `card ${isTodayClass}`;
         card.innerHTML = `
             <div class="date-title">${dayName}, ${dateStr}</div>
-            <div class="day-tag">${dayOffset === null ? "Archiv" : labelNames[dayOffset]}</div>
+            <div class="day-tag">${dayOffset === null ? getText("labels.archive") : labelNames[dayOffset]}</div>
             
             <div class="weather-info">
                 <strong>${weatherType}</strong><br>
-                🌡️ Max: ${tempMax.toFixed(1)} °C<br>
-                🌤️ Strahlung: ${radSum.toFixed(2)} kWh/m²<br>
-                <span class="sun-position">☀️ Sonnenhöchststand: ${solarNoonElevation.toFixed(1)}°</span>
+                ${getText("labels.weatherInfo")} ${tempMax.toFixed(1)} °C<br>
+                ${getText("labels.radiation")} ${radSum.toFixed(2)} kWh/m²<br>
+                <span class="sun-position">${getText("labels.solarNoon")} ${solarNoonElevation.toFixed(1)}°</span>
             </div>
 
             <div class="results">
                 ${stringZeilen}
-                <div class="result-line total-line"><span>Prognose Gesamt:</span> <span>${gesamtErtrag.toFixed(2)} kWh</span></div>
+                <div class="result-line total-line"><span>${getText("labels.forecastTotal")}</span> <span>${gesamtErtrag.toFixed(2)} kWh</span></div>
             </div>
 
             <div id="${targetId}-actual-section-${i}" class="actual-values empty"></div>
             
             <div style="margin-top: 15px; text-align: center;">
-                <button class="btn-edit" onclick="openActualValuesModal('${dailyData.time[i]}', ${i})">Realwerte eingeben</button>
+                <button class="btn-edit" onclick="openActualValuesModal('${dailyData.time[i]}', ${i})">${getText("labels.edit")}</button>
             </div>
         `;
         grid.appendChild(card);
@@ -787,7 +813,7 @@ async function recalculateSelectedArchiveDay() {
     if (!record) return;
     const button = document.querySelector(".btn-recalculate");
     button.disabled = true;
-    button.innerText = "Berechne neu...";
+    button.innerText = getText("archiveRecalculateBusy");
     try {
         const date = new Date(`${record.date}T12:00:00`);
         const { latitude, longitude } = anlagenKonfiguration.koordinaten;
@@ -809,18 +835,18 @@ async function recalculateSelectedArchiveDay() {
         alert(`Neuberechnung fehlgeschlagen: ${error.message}`);
     } finally {
         button.disabled = false;
-        button.innerText = "Prognose neu berechnen";
+        button.innerText = getText("archiveRecalculate");
     }
 }
 
 function showArchiveDetail(date) {
     const record = loadArchive()[date];
     if (!record) return;
-    const actualValues = record.actual ? Object.entries(record.actual).map(([id, value]) => `${id.replace("string_", "String ")}: ${Number(value).toFixed(2)} kWh`).join(", ") : "noch kein Realwert";
+    const actualValues = record.actual ? Object.entries(record.actual).map(([id, value]) => `${id.replace("string_", getText("labels.string") + " ")}: ${Number(value).toFixed(2)} kWh`).join(", ") : getText("archiveDetailMissing");
     const irradiancePoints = Object.values(record.tiltedIrradiance).reduce((sum, values) => sum + values.length, 0);
     const detail = document.getElementById("archive-detail");
     detail.innerHTML = `<strong>${new Date(`${date}T12:00:00`).toLocaleDateString('de-DE')}</strong>: ${actualValues}<br>
-        Wettercode ${record.weatherCode}, horizontale Strahlung ${(Number(record.horizontalRadiation) / 3.6).toFixed(2)} kWh/m², gespeicherte geneigte Stundenwerte: ${irradiancePoints}`;
+        ${getText("weatherCode")} ${record.weatherCode}, ${getText("horizontalRadiation")} ${(Number(record.horizontalRadiation) / 3.6).toFixed(2)} kWh/m², ${getText("storedTiltedHours")}: ${irradiancePoints}`;
     detail.style.display = "block";
 }
 
@@ -834,7 +860,7 @@ function exportArchive() {
 }
 
 function clearArchive() {
-    if (!confirm("Alle historischen Prognose-, Wetter- und Einstrahlungsdaten löschen?")) return;
+    if (!confirm(getText("confirmClearArchive"))) return;
     localStorage.removeItem(ARCHIVE_KEY);
     renderArchive();
     document.getElementById("archive-detail").style.display = "none";
@@ -874,8 +900,8 @@ function openActualValuesModal(dateStr, cardIndex) {
             const inputGroup = document.createElement('div');
             inputGroup.className = 'input-group';
             inputGroup.innerHTML = `
-                <label>${string.name || `String ${stringId}`} (${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung}):</label>
-                <input type="number" step="0.01" id="string-${stringId}-input" value="${currentValue}" placeholder="z.B. 22.85" />
+                <label>${string.name || `${getText("labels.string")} ${stringId}`} (${string.gesamt_module_anzahl} ${getText("labels.perModule")}, ${string.haupt_ausrichtung}):</label>
+                <input type="number" step="0.01" id="string-${stringId}-input" value="${currentValue}" placeholder="${getText("exampleValue")}" />
             `;
             stringInputsDiv.appendChild(inputGroup);
         });
@@ -892,7 +918,7 @@ function closeActualValuesModal() {
 function saveActualValues() {
     const dateStr = document.getElementById('actual-date-input').value;
     if (!dateStr) {
-        alert('Bitte ein Datum auswählen');
+        alert(getText('requiredDate'));
         return;
     }
     
@@ -908,7 +934,7 @@ function saveActualValues() {
     }
     
     if (Object.keys(values).length === 0) {
-        alert('Bitte mindestens einen Wert eingeben');
+        alert(getText('requiredValue'));
         return;
     }
     
@@ -936,7 +962,7 @@ function displayActualValuesForDay(dateStr, stringErtraege, sectionId) {
     
     section.className = 'actual-values has-data';
     
-    let html = '<strong>📊 Realwerte & Vergleich:</strong><br>';
+    let html = `<strong>${getText("realValuesComparison")}</strong><br>`;
     let totalActual = 0;
     let totalForecast = 0;
     
@@ -972,7 +998,7 @@ function displayActualValuesForDay(dateStr, stringErtraege, sectionId) {
         const totalDeviationSign = totalDeviation >= 0 ? '+' : '';
         
         html += `<div class="result-line total-line">
-            <span>Realwert Gesamt:</span>
+            <span>${getText("labels.realTotal")}</span>
             <span>${totalActual.toFixed(2)} kWh <span class="deviation ${totalDeviationClass}">
             ${totalDeviationSign}${totalDeviation.toFixed(2)} kWh (${totalDeviationSign}${totalDeviationPercent}%)</span></span>
         </div>`;
