@@ -1371,9 +1371,11 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
                 <div style="width: 100%; height: 12px; background: rgba(148, 163, 184, 0.25); border-radius: 999px; overflow: hidden;">
                     <div style="width: ${Math.min(100, progressPercent)}%; height: 100%; background: ${progressBarColor}; border-radius: 999px; transition: width 0.25s ease;"></div>
                 </div>
-                <div style="margin-top: 8px; font-size: 0.86em; color: #475569;">
-                    <span>${realizedSoFar.toFixed(0)} kWh / ${expectedSoFar.toFixed(0)} kWh ${getText("annualProgressExpected")}</span>
-                    <span style="display: inline-block; margin-left: 8px; color: ${progressBarColor}; font-weight: 700;">${progressText}</span>
+                <div style="margin-top: 8px; font-size: 0.86em; color: #475569; line-height: 1.7;">
+                    <div><strong>${getText("annualStart")}</strong>: ${firstProductionDate.toLocaleDateString('de-DE')}</div>
+                    <div><strong>${getText("annualProgressReached")}</strong>: ${realizedSoFar.toFixed(0)} kWh</div>
+                    <div><strong>${getText("annualProgressExpected")}</strong>: ${expectedSoFar.toFixed(0)} kWh</div>
+                    <div style="color: ${progressBarColor}; font-weight: 700;">${progressText}</div>
                 </div>
             </div>
 
