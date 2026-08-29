@@ -1279,7 +1279,7 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const currentProjection = avgPerDay * 365;
     const historicalReference = await fetchHistoricalAnnualReference(config);
     const historicalAverage = historicalReference.annualEstimate || 0;
-    const annualEstimate = historicalReference.years.length ? (currentProjection * 0.6) + (historicalAverage * 0.4) : currentProjection;
+    const annualEstimate = historicalAverage > 0 ? historicalAverage : currentProjection;
 
     panel.innerHTML = `
         <div class="annual-summary">
