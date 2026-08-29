@@ -2,6 +2,10 @@ const I18N = {
   de: {
     appTitle: "☀️ Live PV-Ertragsprognose & Historie",
     subtitle: "Echtzeitdaten via Open-Meteo API",
+    settings: "⚙️ Einstellungen",
+    downloadTemplate: "Template herunterladen",
+    exportPlant: "Anlage exportieren",
+    uploadJson: "JSON hochladen",
     toggleStrings: "String-Konfiguration anzeigen",
     toggleStringsHide: "String-Konfiguration ausblenden",
     loading: "Lade Live-Wetterdaten und berechne Erträge...",
@@ -80,6 +84,10 @@ const I18N = {
   en: {
     appTitle: "☀️ Live PV Yield Forecast & History",
     subtitle: "Live data via Open-Meteo API",
+    settings: "⚙️ Settings",
+    downloadTemplate: "Download template",
+    exportPlant: "Export plant",
+    uploadJson: "Upload JSON",
     toggleStrings: "Show string configuration",
     toggleStringsHide: "Hide string configuration",
     loading: "Loading live weather data and calculating yields...",
@@ -250,9 +258,29 @@ function applyUiTranslations() {
     languageSwitch.setAttribute("aria-label", currentLocale === "de" ? "Switch to English" : "Wechsel zu Deutsch");
   }
 
+  const settingsButton = document.getElementById("settings-button");
+  if (settingsButton) {
+    settingsButton.textContent = getText("settings");
+    settingsButton.setAttribute("aria-label", getText("settings"));
+  }
+
+  const downloadTemplateButton = document.getElementById("download-template-btn");
+  if (downloadTemplateButton) downloadTemplateButton.textContent = getText("downloadTemplate");
+
+  const exportPlantButton = document.getElementById("export-plant-btn");
+  if (exportPlantButton) exportPlantButton.textContent = getText("exportPlant");
+
+  const uploadJsonButton = document.getElementById("upload-json-btn");
+  if (uploadJsonButton) {
+    const uploadLabel = uploadJsonButton.querySelector("span");
+    if (uploadLabel) uploadLabel.textContent = getText("uploadJson");
+  }
+
   const tableHeaders = document.querySelectorAll("#archive-table th");
   const tableKeys = ["archiveTableDate", "archiveTableWeather", "archiveTableForecast", "archiveTableActual", "archiveTableDeviation"];
   tableHeaders.forEach((header, index) => {
     if (tableKeys[index]) header.textContent = getText(tableKeys[index]);
   });
 }
+
+applyUiTranslations();

@@ -31,10 +31,21 @@
             margin-bottom: 5px;
             padding-right: 56px;
         }
-        #language-switch {
+        .header-actions {
             position: absolute;
             right: 0;
             top: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(44, 62, 80, 0.05);
+            border: 1px solid rgba(44, 62, 80, 0.08);
+            border-radius: 999px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+        }
+        #language-switch,
+        #settings-button {
             background: #2c3e50;
             color: white;
             border: none;
@@ -45,34 +56,56 @@
             line-height: 1.2;
             box-shadow: 0 2px 6px rgba(44, 62, 80, 0.15);
         }
-        .config-actions-bar {
+        #language-switch {
+            min-width: 52px;
+        }
+        .settings-menu {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            display: none;
+            min-width: 210px;
+            background: white;
+            border: 1px solid #dfe6e9;
+            border-radius: 10px;
+            box-shadow: 0 10px 24px rgba(44, 62, 80, 0.18);
+            padding: 8px;
+            z-index: 50;
+        }
+        .settings-menu.open {
+            display: block;
+        }
+        .settings-menu-item {
             display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin: 8px 0 18px;
-        }
-        .config-actions-bar button,
-        .upload-button {
-            background: #3498db;
-            color: white;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            background: #f8f9fa;
+            color: #2c3e50;
             border: none;
-            border-radius: 6px;
-            padding: 8px 14px;
+            border-radius: 8px;
+            padding: 10px 12px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             font-size: 0.95em;
+            text-align: left;
+            margin-bottom: 6px;
         }
-        .upload-button {
+        .settings-menu-item:last-child {
+            margin-bottom: 0;
+        }
+        .upload-menu-item {
             position: relative;
             overflow: hidden;
-            display: inline-block;
         }
-        .upload-button input {
+        .upload-menu-item input {
             position: absolute;
             inset: 0;
             opacity: 0;
             cursor: pointer;
+        }
+        .config-actions-bar {
+            display: none;
         }
         .subtitle {
             text-align: center;
@@ -169,6 +202,41 @@
             margin: 8px 0 0;
         }
         @media (max-width: 700px) {
+            .header-row {
+                justify-content: space-between;
+                align-items: flex-start;
+                padding-top: 0;
+            }
+            h1 {
+                padding-right: 0;
+                font-size: 1.4em;
+                text-align: left;
+                max-width: 58%;
+            }
+            .header-actions {
+                position: static;
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 6px;
+            }
+            #language-switch,
+            #settings-button {
+                padding: 6px 9px;
+                font-size: 0.8em;
+            }
+            #language-switch {
+                min-width: 46px;
+            }
+            .settings-menu {
+                right: 0;
+                left: auto;
+                min-width: 180px;
+            }
+            .settings-menu-item {
+                padding: 9px 10px;
+                font-size: 0.85em;
+            }
             .configuration-group {
                 grid-template-columns: 1fr 1fr 1fr;
             }
@@ -434,15 +502,20 @@
 <div class="container">
     <div class="header-row">
         <h1 id="app-title" data-default="☀️ Live PV-Ertragsprognose & Historie">☀️ Live PV-Ertragsprognose & Historie</h1>
-        <button id="language-switch" type="button" onclick="toggleLanguage()" aria-label="Switch language">🌐 EN</button>
-    </div>
-    <div class="config-actions-bar">
-        <button type="button" onclick="downloadTemplate()">Template herunterladen</button>
-        <button type="button" onclick="exportPlantConfiguration()">Anlage exportieren</button>
-        <label class="upload-button">
-            JSON hochladen
-            <input id="config-upload" type="file" accept=".json,application/json" />
-        </label>
+        <div class="header-actions">
+            <button id="language-switch" type="button" onclick="toggleLanguage()" aria-label="Switch language">🌐 EN</button>
+            <div style="position: relative;">
+                <button id="settings-button" type="button" onclick="toggleSettingsMenu()" aria-haspopup="true" aria-expanded="false">⚙️ Settings</button>
+                <div id="settings-menu" class="settings-menu" role="menu" aria-label="Settings menu">
+                    <button id="download-template-btn" class="settings-menu-item" type="button" onclick="downloadTemplate()">Download template</button>
+                    <button id="export-plant-btn" class="settings-menu-item" type="button" onclick="exportPlantConfiguration()">Export plant</button>
+                    <label id="upload-json-btn" class="settings-menu-item upload-menu-item" role="menuitem">
+                        <span>Upload JSON</span>
+                        <input id="config-upload" type="file" accept=".json,application/json" />
+                    </label>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="subtitle" id="anlage-subtitle" data-default="Echtzeitdaten via Open-Meteo API">Echtzeitdaten via Open-Meteo API</div>
     <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">String-Konfiguration anzeigen</button>
@@ -509,6 +582,28 @@ const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag",
 const labelNames = { "-2": getText("labels.dayBeforeYesterday"), "-1": getText("labels.yesterday"), "0": getText("labels.today"), "1": getText("labels.tomorrow"), "2": getText("labels.dayAfterTomorrow") };
 
 document.getElementById("config-upload").addEventListener("change", handleConfigUpload);
+
+function toggleSettingsMenu() {
+    const menu = document.getElementById("settings-menu");
+    const button = document.getElementById("settings-button");
+    if (!menu || !button) return;
+
+    const isOpen = menu.classList.toggle("open");
+    button.setAttribute("aria-expanded", String(isOpen));
+}
+
+document.addEventListener("click", function(event) {
+    const menu = document.getElementById("settings-menu");
+    const button = document.getElementById("settings-button");
+    if (!menu || !button) return;
+
+    const clickInsideMenu = menu.contains(event.target);
+    const clickOnButton = button.contains(event.target);
+    if (!clickInsideMenu && !clickOnButton) {
+        menu.classList.remove("open");
+        button.setAttribute("aria-expanded", "false");
+    }
+});
 
 // Hilfsfunktion zur Formatierung von Date-Objekten zu YYYY-MM-DD
 function formatDate(date) {
