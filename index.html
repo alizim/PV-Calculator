@@ -1290,15 +1290,40 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const annualEstimate = historicalAverage > 0 ? historicalAverage : currentProjection;
 
     const today = new Date();
-    const yearStart = new Date(today.getFullYear(), 0, 1);
+    const currentYear = today.getFullYear();
+    const archive = loadArchive();
+    const firstProductionCandidateDates = [];
+
+    Object.values(archive || {}).forEach(record => {
+        if (!record || !record.date || Number(record.date.slice(0, 4)) !== currentYear) return;
+        const totalActual = record.actual ? Object.values(record.actual).reduce((sum, value) => sum + Number(value || 0), 0) : 0;
+        if (Number.isFinite(totalActual) && totalActual > 0) {
+            firstProductionCandidateDates.push(new Date(`${record.date}T12:00:00`));
+        }
+    });
+
+    if (Array.isArray(dailyData?.time)) {
+        dailyData.time.forEach((dateValue, index) => {
+            const date = new Date(dateValue);
+            const yieldValue = Number(calculateStringYields(dateValue, config, irradianceProfiles).reduce((sum, string) => sum + string.ertrag, 0) || 0);
+            if (date.getFullYear() === currentYear && yieldValue > 0) {
+                firstProductionCandidateDates.push(date);
+            }
+        });
+    }
+
+    const firstProductionDate = firstProductionCandidateDates.length
+        ? new Date(Math.min(...firstProductionCandidateDates.map(date => date.getTime())))
+        : new Date(currentYear, 0, 1);
+
+    const yearStart = firstProductionDate;
     const dayOfYear = Math.max(1, Math.min(365, Math.floor((today - yearStart) / 86400000) + 1));
-    const totalDaysOfYear = new Date(today.getFullYear(), 11, 31).getDate();
+    const totalDaysOfYear = Math.max(1, Math.floor((new Date(currentYear, 11, 31, 12) - new Date(currentYear, 0, 1, 12)) / 86400000) + 1);
     const dateProgressPercent = Math.min(100, (dayOfYear / totalDaysOfYear) * 100);
 
-    const archive = loadArchive();
     let realizedSoFar = 0;
     Object.values(archive || {}).forEach(record => {
-        if (!record || !record.date || Number(record.date.slice(0, 4)) !== today.getFullYear() || !record.actual) return;
+        if (!record || !record.date || Number(record.date.slice(0, 4)) !== currentYear || !record.actual) return;
         const actualTotal = Object.values(record.actual).reduce((sum, value) => sum + Number(value || 0), 0);
         if (Number.isFinite(actualTotal)) {
             realizedSoFar += actualTotal;
