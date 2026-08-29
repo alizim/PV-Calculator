@@ -1149,10 +1149,28 @@ function setActiveDashboardTab(tabName) {
     if (annualView) annualView.classList.toggle("visible", isAnnual);
 }
 
+function getArchiveDayCount() {
+    const archive = loadArchive();
+    let archiveDayCount = 0;
+
+    Object.values(archive || {}).forEach(record => {
+        if (!record || !record.date || !record.forecast || !Number.isFinite(Number(record.forecast.total))) {
+            return;
+        }
+        archiveDayCount += 1;
+    });
+
+    return archiveDayCount;
+}
+
 function getHistoricalAnnualReference() {
     const archive = loadArchive();
     const yearlyTotals = {};
     const currentYear = new Date().getFullYear();
+
+    if (getArchiveDayCount() < 200) {
+        return { annualEstimate: 0, years: [], currentYearTotal: 0, source: "archive-insufficient" };
+    }
 
     Object.values(archive || {}).forEach(record => {
         if (!record || !record.date || !record.forecast || !Number.isFinite(Number(record.forecast.total))) {
@@ -1167,7 +1185,7 @@ function getHistoricalAnnualReference() {
 
     const years = Object.keys(yearlyTotals).sort((first, second) => Number(first) - Number(second));
     if (!years.length) {
-        return { annualEstimate: 0, years: [], currentYearTotal: 0, source: "archive" };
+        return { annualEstimate: 0, years: [], currentYearTotal: 0, source: "archive-insufficient" };
     }
 
     const selectedYears = years.slice(Math.max(0, years.length - 5));
@@ -1189,6 +1207,14 @@ function getHistoricalAnnualReference() {
 }
 
 async function fetchHistoricalAnnualReference(config) {
+    const archiveDayCount = getArchiveDayCount();
+    if (archiveDayCount >= 200) {
+        const archiveReference = getHistoricalAnnualReference();
+        if (archiveReference.years.length) {
+            return archiveReference;
+        }
+    }
+
     const coordinates = normalizeCoordinates(config.coordinates ?? config.koordinaten ?? {});
     const latitude = Number(coordinates.latitude);
     const longitude = Number(coordinates.longitude);
