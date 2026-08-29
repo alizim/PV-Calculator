@@ -866,18 +866,40 @@ function handleConfigUpload(event) {
 async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
     const gruppen = (config.stringConfiguration ?? config.string_aufteilung ?? []).flatMap(string => string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []);
     const profile = new Map();
-    const { latitude, longitude } = config.coordinates ?? config.koordinaten ?? {};
 
-    await Promise.all(gruppen.map(async gruppe => {
-        const azimut = getAzimut(gruppe);
+    const latitude = Number(config.coordinates?.latitude ?? config.koordinaten?.latitude ?? NaN);
+    const longitude = Number(config.coordinates?.longitude ?? config.koordinaten?.longitude ?? NaN);
 
-        const tilt = gruppe.tiltDegrees ?? gruppe.neigung_grad ?? 0;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error("Die Koordinaten der Anlage sind ungültig.");
+    }
+
+    const validGroups = gruppen.filter(gruppe => {
+        const tilt = Number(gruppe.tiltDegrees ?? gruppe.neigung_grad ?? NaN);
+        const azimut = Number(gruppe.azimuthDegrees ?? gruppe.azimut_grad ?? NaN);
+        return Number.isFinite(tilt) && Number.isFinite(azimut) && tilt >= 0 && tilt <= 90 && azimut >= -180 && azimut <= 180;
+    });
+
+    await Promise.all(validGroups.map(async gruppe => {
+        const azimut = Math.min(180, Math.max(-180, Number(gruppe.azimuthDegrees ?? gruppe.azimut_grad ?? 0)));
+        const tilt = Math.min(90, Math.max(0, Number(gruppe.tiltDegrees ?? gruppe.neigung_grad ?? 0)));
         const profileKey = `${tilt}:${azimut}`;
         if (profile.has(profileKey)) return;
 
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=global_tilted_irradiance&tilt=${tilt}&azimuth=${azimut}&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Einstrahlungsprofil konnte nicht geladen werden (HTTP ${response.status})`);
+        if (!response.ok) {
+            const groupInfo = {
+                tilt,
+                azimuth: azimut,
+                latitude,
+                longitude,
+                stringId: gruppe.stringId ?? gruppe.string_id ?? "unknown",
+                groupName: gruppe.description ?? "module-group"
+            };
+            console.warn("Open-Meteo 400 for group:", groupInfo);
+            throw new Error(`Einstrahlungsprofil konnte nicht geladen werden (HTTP ${response.status}) für tilt=${tilt}, azimuth=${azimut}, lat=${latitude}, lon=${longitude}`);
+        }
         const data = await response.json();
         profile.set(profileKey, data.hourly);
     }));
