@@ -1287,7 +1287,7 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const historicalAverage = currentYieldPerIrradiation > 0 && historicalIrradiation > 0
         ? historicalIrradiation * currentYieldPerIrradiation
         : (historicalReference.annualEstimate || 0);
-    const annualEstimate = historicalAverage > 0 ? historicalAverage : currentProjection;
+    const annualEstimateBase = historicalAverage > 0 ? historicalAverage : currentProjection;
 
     const today = new Date();
     const currentYear = today.getFullYear();
@@ -1329,6 +1329,11 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
             realizedSoFar += actualTotal;
         }
     });
+
+    const totalDaysOfYearForEstimate = Math.max(1, Math.floor((new Date(currentYear, 11, 31, 12) - new Date(currentYear, 0, 1, 12)) / 86400000) + 1);
+    const daysBeforeFirstProduction = Math.max(0, Math.floor((firstProductionDate - new Date(currentYear, 0, 1, 12)) / 86400000));
+    const remainingYearFraction = Math.max(0, Math.min(1, (totalDaysOfYearForEstimate - daysBeforeFirstProduction) / totalDaysOfYearForEstimate));
+    const annualEstimate = annualEstimateBase * remainingYearFraction;
 
     const expectedSoFar = annualEstimate * (dateProgressPercent / 100);
     const realizedPercent = annualEstimate > 0 ? (realizedSoFar / annualEstimate) * 100 : 0;
