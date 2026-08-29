@@ -613,6 +613,21 @@ function applyLegacyAliases(target, englishKey, legacyKey) {
     });
 }
 
+function normalizeCoordinates(rawCoordinates) {
+    const source = rawCoordinates && typeof rawCoordinates === "object" ? rawCoordinates : {};
+    const latitude = Number(source.latitude ?? source.lat ?? source.y ?? 0);
+    const longitude = Number(source.longitude ?? source.lon ?? source.x ?? 0);
+
+    const normalized = {
+        latitude: Number.isFinite(latitude) ? latitude : 0,
+        longitude: Number.isFinite(longitude) ? longitude : 0
+    };
+
+    applyLegacyAliases(normalized, "latitude", "latitude");
+    applyLegacyAliases(normalized, "longitude", "longitude");
+    return normalized;
+}
+
 function normalizeModuleGroup(group, fallbackLossFactor) {
     const normalized = {
         moduleCount: group.moduleCount ?? group.anzahl_module ?? 0,
@@ -656,7 +671,7 @@ function normalizePlantConfiguration(config) {
     const normalized = {
         site: config.site ?? config.standort ?? "",
         description: config.description ?? config.beschreibung ?? "",
-        coordinates: config.coordinates ?? config.koordinaten ?? { latitude: 0, longitude: 0 },
+        coordinates: normalizeCoordinates(config.coordinates ?? config.koordinaten ?? { latitude: 0, longitude: 0 }),
         defaultLossFactor: config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85,
         systemProfile: {
             installedPowerKwp: systemProfileSource.installedPowerKwp ?? systemProfileSource.installierte_leistung_kwp ?? 0,
@@ -867,8 +882,9 @@ async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
     const gruppen = (config.stringConfiguration ?? config.string_aufteilung ?? []).flatMap(string => string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []);
     const profile = new Map();
 
-    const latitude = Number(config.coordinates?.latitude ?? config.koordinaten?.latitude ?? NaN);
-    const longitude = Number(config.coordinates?.longitude ?? config.koordinaten?.longitude ?? NaN);
+    const coordinates = normalizeCoordinates(config.coordinates ?? config.koordinaten ?? {});
+    const latitude = Number(coordinates.latitude);
+    const longitude = Number(coordinates.longitude);
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         throw new Error("Die Koordinaten der Anlage sind ungültig.");
@@ -969,7 +985,8 @@ async function fetchAndCalculate() {
         const { vonDatum, bisDatum } = getDateRange();
 
         // Open-Meteo API URL für Historie + Vorhersage kombiniert
-        const { latitude, longitude } = anlagenKonfiguration.coordinates ?? anlagenKonfiguration.koordinaten ?? {};
+        const coordinates = normalizeCoordinates(anlagenKonfiguration.coordinates ?? anlagenKonfiguration.koordinaten ?? {});
+        const { latitude, longitude } = coordinates;
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
 
         const [response, irradianceProfiles] = await Promise.all([
@@ -1286,7 +1303,8 @@ async function recalculateSelectedArchiveDay() {
     button.innerText = getText("archiveRecalculateBusy");
     try {
         const date = new Date(`${record.date}T12:00:00`);
-        const { latitude, longitude } = anlagenKonfiguration.coordinates ?? anlagenKonfiguration.koordinaten ?? {};
+        const coordinates = normalizeCoordinates(anlagenKonfiguration.coordinates ?? anlagenKonfiguration.koordinaten ?? {});
+        const { latitude, longitude } = coordinates;
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${record.date}&end_date=${record.date}`;
         const [response, irradianceProfiles] = await Promise.all([
             fetch(url),
