@@ -1293,7 +1293,7 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const yearStart = new Date(today.getFullYear(), 0, 1);
     const dayOfYear = Math.max(1, Math.min(365, Math.floor((today - yearStart) / 86400000) + 1));
     const totalDaysOfYear = new Date(today.getFullYear(), 11, 31).getDate();
-    const progressPercent = Math.min(100, (dayOfYear / totalDaysOfYear) * 100);
+    const dateProgressPercent = Math.min(100, (dayOfYear / totalDaysOfYear) * 100);
 
     const archive = loadArchive();
     let realizedSoFar = 0;
@@ -1305,10 +1305,11 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
         }
     });
 
-    const expectedSoFar = annualEstimate * (progressPercent / 100);
-    const realizedRatio = expectedSoFar > 0 ? realizedSoFar / expectedSoFar : 0;
-    const progressBarColor = realizedRatio >= 1 ? "#27ae60" : realizedRatio >= 0.8 ? "#f39c12" : "#e74c3c";
-    const progressText = realizedRatio >= 1 ? getText("annualProgressAhead") : realizedRatio >= 0.8 ? getText("annualProgressOnTrack") : getText("annualProgressBehind");
+    const expectedSoFar = annualEstimate * (dateProgressPercent / 100);
+    const realizedPercent = annualEstimate > 0 ? (realizedSoFar / annualEstimate) * 100 : 0;
+    const progressPercent = Math.min(100, realizedPercent);
+    const progressBarColor = progressPercent >= 100 ? "#27ae60" : progressPercent >= 80 ? "#f39c12" : "#e74c3c";
+    const progressText = progressPercent >= 100 ? getText("annualProgressAhead") : progressPercent >= 80 ? getText("annualProgressOnTrack") : getText("annualProgressBehind");
 
     panel.innerHTML = `
         <div class="annual-summary">
