@@ -1337,8 +1337,9 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
 
     const expectedSoFar = annualEstimate * (dateProgressPercent / 100);
     const progressRatio = expectedSoFar > 0 ? realizedSoFar / expectedSoFar : 0;
-    const progressPercent = Math.max(0, progressRatio * 100);
-    const progressBarWidth = Math.min(100, progressPercent);
+    const annualProgressRatio = annualEstimate > 0 ? realizedSoFar / annualEstimate : 0;
+    const progressPercent = Math.min(100, Math.max(0, annualProgressRatio * 100));
+    const progressBarWidth = progressPercent;
     const progressBarColor = progressRatio >= 1 ? "#27ae60" : progressRatio >= 0.8 ? "#f39c12" : "#e74c3c";
     const progressText = progressRatio >= 1 ? getText("annualProgressAhead") : progressRatio >= 0.8 ? getText("annualProgressOnTrack") : getText("annualProgressBehind");
 
