@@ -598,6 +598,9 @@ const labelNames = { "-2": getText("labels.dayBeforeYesterday"), "-1": getText("
 document.getElementById("config-upload").addEventListener("change", handleConfigUpload);
 
 function applyLegacyAliases(target, englishKey, legacyKey) {
+    if (!target || typeof target !== "object") return;
+    if (englishKey === legacyKey) return;
+
     Object.defineProperty(target, legacyKey, {
         get() {
             return target[englishKey];
