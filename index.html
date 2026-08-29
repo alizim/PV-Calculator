@@ -201,6 +201,17 @@
             font-size: 0.9em;
             margin: 8px 0 0;
         }
+        .migration-status {
+            display: none;
+            margin: 10px 0 0;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: #fff7e6;
+            border: 1px solid #f5c26b;
+            color: #8a5a00;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
         @media (max-width: 700px) {
             .header-row {
                 justify-content: space-between;
@@ -520,6 +531,7 @@
     <div class="subtitle" id="anlage-subtitle" data-default="Echtzeitdaten via Open-Meteo API">Echtzeitdaten via Open-Meteo API</div>
     <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">String-Konfiguration anzeigen</button>
     <div id="string-definitions" class="string-definitions" style="display: none;"></div>
+    <p id="migration-status" class="migration-status"></p>
     
     <div id="loading-text" class="loading" data-default="Lade Live-Wetterdaten und berechne Erträge...">Lade Live-Wetterdaten und berechne Erträge...</div>
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
@@ -571,6 +583,8 @@
 <script src="i18n.js"></script>
 <script src="calc.js"></script>
 <script>
+migrateLegacyStorageKeys();
+
 let anlagenKonfiguration;
 let anlagenKonfigurationOriginal;
 const KONFIGURATIONS_URLEN = [
@@ -582,6 +596,179 @@ const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag",
 const labelNames = { "-2": getText("labels.dayBeforeYesterday"), "-1": getText("labels.yesterday"), "0": getText("labels.today"), "1": getText("labels.tomorrow"), "2": getText("labels.dayAfterTomorrow") };
 
 document.getElementById("config-upload").addEventListener("change", handleConfigUpload);
+
+function applyLegacyAliases(target, englishKey, legacyKey) {
+    Object.defineProperty(target, legacyKey, {
+        get() {
+            return target[englishKey];
+        },
+        set(value) {
+            target[englishKey] = value;
+        },
+        enumerable: false,
+        configurable: true
+    });
+}
+
+function normalizeModuleGroup(group, fallbackLossFactor) {
+    const normalized = {
+        moduleCount: group.moduleCount ?? group.anzahl_module ?? 0,
+        tiltDegrees: group.tiltDegrees ?? group.neigung_grad ?? 0,
+        azimuthDegrees: group.azimuthDegrees ?? group.azimut_grad ?? 0,
+        orientation: group.orientation ?? group.ausrichtung ?? "",
+        lossFactor: group.lossFactor ?? group.verlustfaktor ?? fallbackLossFactor ?? 0.85
+    };
+
+    applyLegacyAliases(normalized, "moduleCount", "anzahl_module");
+    applyLegacyAliases(normalized, "tiltDegrees", "neigung_grad");
+    applyLegacyAliases(normalized, "azimuthDegrees", "azimut_grad");
+    applyLegacyAliases(normalized, "orientation", "ausrichtung");
+    applyLegacyAliases(normalized, "lossFactor", "verlustfaktor");
+    return normalized;
+}
+
+function normalizeStringConfiguration(string, index, fallbackLossFactor) {
+    const normalized = {
+        stringId: string.stringId ?? string.string_id ?? index + 1,
+        name: string.name ?? `String ${string.stringId ?? string.string_id ?? index + 1}`,
+        totalModuleCount: string.totalModuleCount ?? string.gesamt_module_anzahl ?? 0,
+        mainOrientation: string.mainOrientation ?? string.haupt_ausrichtung ?? "",
+        lossFactor: string.lossFactor ?? string.verlustfaktor ?? fallbackLossFactor ?? 0.85,
+        moduleGroupsByTilt: (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(group => normalizeModuleGroup(group, string.lossFactor ?? string.verlustfaktor ?? fallbackLossFactor ?? 0.85))
+    };
+
+    applyLegacyAliases(normalized, "stringId", "string_id");
+    applyLegacyAliases(normalized, "totalModuleCount", "gesamt_module_anzahl");
+    applyLegacyAliases(normalized, "mainOrientation", "haupt_ausrichtung");
+    applyLegacyAliases(normalized, "lossFactor", "verlustfaktor");
+    applyLegacyAliases(normalized, "moduleGroupsByTilt", "modul_gruppen_nach_neigung");
+    return normalized;
+}
+
+function normalizePlantConfiguration(config) {
+    if (!config || typeof config !== "object") return config;
+
+    const systemProfileSource = config.systemProfile ?? config.system_steckbrief ?? {};
+    const moduleSource = systemProfileSource.module ?? {};
+    const normalized = {
+        site: config.site ?? config.standort ?? "",
+        description: config.description ?? config.beschreibung ?? "",
+        coordinates: config.coordinates ?? config.koordinaten ?? { latitude: 0, longitude: 0 },
+        defaultLossFactor: config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85,
+        systemProfile: {
+            installedPowerKwp: systemProfileSource.installedPowerKwp ?? systemProfileSource.installierte_leistung_kwp ?? 0,
+            module: {
+                count: moduleSource.count ?? moduleSource.anzahl ?? 0,
+                model: moduleSource.model ?? moduleSource.modell ?? "",
+                powerPerModuleW: moduleSource.powerPerModuleW ?? moduleSource.leistung_pro_modul_w ?? 0,
+                optimizer: moduleSource.optimizer ?? moduleSource.optimierer ?? ""
+            }
+        },
+        stringConfiguration: (config.stringConfiguration ?? config.string_aufteilung ?? []).map((string, index) => normalizeStringConfiguration(string, index, config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85))
+    };
+
+    applyLegacyAliases(normalized, "site", "standort");
+    applyLegacyAliases(normalized, "description", "beschreibung");
+    applyLegacyAliases(normalized, "coordinates", "koordinaten");
+    applyLegacyAliases(normalized, "defaultLossFactor", "verlustfaktor_standard");
+    applyLegacyAliases(normalized, "systemProfile", "system_steckbrief");
+    applyLegacyAliases(normalized, "stringConfiguration", "string_aufteilung");
+
+    applyLegacyAliases(normalized.coordinates, "latitude", "latitude");
+    applyLegacyAliases(normalized.coordinates, "longitude", "longitude");
+    applyLegacyAliases(normalized.systemProfile, "installedPowerKwp", "installierte_leistung_kwp");
+    applyLegacyAliases(normalized.systemProfile.module, "count", "anzahl");
+    applyLegacyAliases(normalized.systemProfile.module, "model", "modell");
+    applyLegacyAliases(normalized.systemProfile.module, "powerPerModuleW", "leistung_pro_modul_w");
+    applyLegacyAliases(normalized.systemProfile.module, "optimizer", "optimierer");
+
+    return normalized;
+}
+
+function serializePlantConfiguration(config) {
+    const normalized = normalizePlantConfiguration(config);
+    return JSON.stringify({
+        site: normalized.site,
+        description: normalized.description,
+        coordinates: normalized.coordinates,
+        defaultLossFactor: normalized.defaultLossFactor,
+        systemProfile: normalized.systemProfile,
+        stringConfiguration: normalized.stringConfiguration
+    }, null, 2);
+}
+
+function getLegacyStorageKeys() {
+    const legacyPatternKeys = [
+        "pv_uploaded_configuration_v2",
+        "pv_uploaded_configuration_legacy",
+        "pv_uploaded_configuration_old",
+        "pv_string_configuration_v2",
+        "pv_string_configuration_legacy",
+        "pv_string_configuration_old",
+        "pv_historical_archive_v2",
+        "pv_historical_archive_legacy",
+        "pv_historical_archive_old"
+    ];
+
+    const legacyActualKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
+    return [...new Set([...legacyPatternKeys.filter(key => localStorage.getItem(key) !== null), ...legacyActualKeys])];
+}
+
+function updateMigrationNotice() {
+    const migrationStatus = document.getElementById("migration-status");
+    if (!migrationStatus) return;
+
+    const legacyKeys = getLegacyStorageKeys();
+    if (legacyKeys.length === 0) {
+        migrationStatus.style.display = "none";
+        migrationStatus.textContent = "";
+        return;
+    }
+
+    migrationStatus.style.display = "block";
+    migrationStatus.textContent = `Legacy localStorage data detected (${legacyKeys.join(", ")}). Keep the migration compatibility code until these keys are gone. Remove it only after the old entries are cleared.`;
+}
+
+function migrateLegacyStorageKeys() {
+    const canonicalMappings = [
+        ["pv_uploaded_configuration", ["pv_uploaded_configuration_v2", "pv_uploaded_configuration_legacy", "pv_uploaded_configuration_old"]],
+        ["pv_string_configuration", ["pv_string_configuration_v2", "pv_string_configuration_legacy", "pv_string_configuration_old"]],
+        ["pv_historical_archive", ["pv_historical_archive_v2", "pv_historical_archive_legacy", "pv_historical_archive_old"]]
+    ];
+
+    let legacyDetected = false;
+
+    for (const [canonicalKey, legacyKeys] of canonicalMappings) {
+        if (localStorage.getItem(canonicalKey)) continue;
+
+        for (const legacyKey of legacyKeys) {
+            const legacyValue = localStorage.getItem(legacyKey);
+            if (legacyValue) {
+                localStorage.setItem(canonicalKey, legacyValue);
+                legacyDetected = true;
+                break;
+            }
+        }
+    }
+
+    const legacyActualKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
+    for (const legacyKey of legacyActualKeys) {
+        const date = legacyKey.replace(/^pv_actual_/, "");
+        const targetKey = `pv_actual_values_${date}`;
+        const legacyValue = localStorage.getItem(legacyKey);
+        if (legacyValue && !localStorage.getItem(targetKey)) {
+            localStorage.setItem(targetKey, legacyValue);
+            legacyDetected = true;
+        }
+    }
+
+    if (legacyDetected) {
+        console.warn("Legacy migration active. Keep compatibility code until localStorage contains no legacy keys.");
+    }
+
+    updateMigrationNotice();
+    return legacyDetected;
+}
 
 function toggleSettingsMenu() {
     const menu = document.getElementById("settings-menu");
@@ -655,13 +842,15 @@ function handleConfigUpload(event) {
     reader.onload = () => {
         try {
             const parsed = JSON.parse(reader.result);
-            if (!parsed || !parsed.koordinaten || !parsed.system_steckbrief || !Array.isArray(parsed.string_aufteilung)) {
+            const hasEnglishConfig = parsed && parsed.coordinates && parsed.systemProfile && Array.isArray(parsed.stringConfiguration);
+            const hasLegacyConfig = parsed && parsed.koordinaten && parsed.system_steckbrief && Array.isArray(parsed.string_aufteilung);
+            if (!parsed || (!hasEnglishConfig && !hasLegacyConfig)) {
                 throw new Error("Ungültige JSON-Struktur für eine PV-Anlage.");
             }
 
-            anlagenKonfiguration = parsed;
-            anlagenKonfigurationOriginal = structuredClone(parsed);
-            localStorage.setItem("pv_uploaded_configuration", JSON.stringify(parsed));
+            anlagenKonfiguration = normalizePlantConfiguration(parsed);
+            anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
+            localStorage.setItem("pv_uploaded_configuration", serializePlantConfiguration(anlagenKonfiguration));
             event.target.value = "";
             fetchAndCalculate();
         } catch (error) {
@@ -672,17 +861,18 @@ function handleConfigUpload(event) {
 }
 
 async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
-    const gruppen = config.string_aufteilung.flatMap(string => string.modul_gruppen_nach_neigung);
+    const gruppen = (config.stringConfiguration ?? config.string_aufteilung ?? []).flatMap(string => string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []);
     const profile = new Map();
-    const { latitude, longitude } = config.koordinaten;
+    const { latitude, longitude } = config.coordinates ?? config.koordinaten ?? {};
 
     await Promise.all(gruppen.map(async gruppe => {
         const azimut = getAzimut(gruppe);
 
-        const profileKey = `${gruppe.neigung_grad}:${azimut}`;
+        const tilt = gruppe.tiltDegrees ?? gruppe.neigung_grad ?? 0;
+        const profileKey = `${tilt}:${azimut}`;
         if (profile.has(profileKey)) return;
 
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=global_tilted_irradiance&tilt=${gruppe.neigung_grad}&azimuth=${azimut}&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=global_tilted_irradiance&tilt=${tilt}&azimuth=${azimut}&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Einstrahlungsprofil konnte nicht geladen werden (HTTP ${response.status})`);
         const data = await response.json();
@@ -699,13 +889,17 @@ async function fetchAndCalculate() {
         }
 
         if (!anlagenKonfiguration) {
-            const uploadedConfig = localStorage.getItem("pv_uploaded_configuration");
+            const uploadedConfig = localStorage.getItem("pv_uploaded_configuration") || localStorage.getItem("pv_uploaded_configuration_v2") || localStorage.getItem("pv_uploaded_configuration_legacy") || localStorage.getItem("pv_uploaded_configuration_old");
             if (uploadedConfig) {
                 try {
-                    anlagenKonfiguration = JSON.parse(uploadedConfig);
+                    anlagenKonfiguration = normalizePlantConfiguration(JSON.parse(uploadedConfig));
                     anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
+                    localStorage.setItem("pv_uploaded_configuration", serializePlantConfiguration(anlagenKonfiguration));
                 } catch (error) {
                     localStorage.removeItem("pv_uploaded_configuration");
+                    localStorage.removeItem("pv_uploaded_configuration_v2");
+                    localStorage.removeItem("pv_uploaded_configuration_legacy");
+                    localStorage.removeItem("pv_uploaded_configuration_old");
                 }
             }
         }
@@ -717,11 +911,25 @@ async function fetchAndCalculate() {
                     const configUrl = new URL(konfigurationsUrl, document.baseURI);
                     const configResponse = await fetch(configUrl);
                     if (!configResponse.ok) throw new Error(`HTTP ${configResponse.status}`);
-                    anlagenKonfiguration = await configResponse.json();
+                    anlagenKonfiguration = normalizePlantConfiguration(await configResponse.json());
                     anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
-                    const gespeicherteStrings = localStorage.getItem("pv_string_configuration");
+                    const gespeicherteStrings = localStorage.getItem("pv_string_configuration") || localStorage.getItem("pv_string_configuration_v2") || localStorage.getItem("pv_string_configuration_legacy") || localStorage.getItem("pv_string_configuration_old");
                     if (gespeicherteStrings) {
-                        anlagenKonfiguration.string_aufteilung = JSON.parse(gespeicherteStrings);
+                        anlagenKonfiguration.stringConfiguration = JSON.parse(gespeicherteStrings).map((string, index) => normalizeStringConfiguration(string, index, anlagenKonfiguration.defaultLossFactor));
+                        localStorage.setItem("pv_string_configuration", JSON.stringify(anlagenKonfiguration.stringConfiguration.map(string => ({
+                            stringId: string.stringId,
+                            name: string.name,
+                            totalModuleCount: string.totalModuleCount,
+                            mainOrientation: string.mainOrientation,
+                            lossFactor: string.lossFactor,
+                            moduleGroupsByTilt: string.moduleGroupsByTilt.map(group => ({
+                                moduleCount: group.moduleCount,
+                                tiltDegrees: group.tiltDegrees,
+                                azimuthDegrees: group.azimuthDegrees,
+                                orientation: group.orientation,
+                                lossFactor: group.lossFactor
+                            }))
+                        }))));
                     }
                     break;
                 } catch (error) {
@@ -736,7 +944,7 @@ async function fetchAndCalculate() {
         const { vonDatum, bisDatum } = getDateRange();
 
         // Open-Meteo API URL für Historie + Vorhersage kombiniert
-        const { latitude, longitude } = anlagenKonfiguration.koordinaten;
+        const { latitude, longitude } = anlagenKonfiguration.coordinates ?? anlagenKonfiguration.koordinaten ?? {};
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${formatDate(vonDatum)}&end_date=${formatDate(bisDatum)}`;
 
         const [response, irradianceProfiles] = await Promise.all([
@@ -748,9 +956,9 @@ async function fetchAndCalculate() {
 
         if (!data.daily) throw new Error(getText("apiDataError"));
 
-        const anlagenBeschreibung = anlagenKonfiguration.beschreibung || "Photovoltaikanlage";
+        const anlagenBeschreibung = anlagenKonfiguration.description ?? anlagenKonfiguration.beschreibung || "Photovoltaikanlage";
         document.getElementById("anlage-subtitle").innerText =
-            `${anlagenBeschreibung} | Standort: ${anlagenKonfiguration.standort} | ${anlagenKonfiguration.system_steckbrief.installierte_leistung_kwp.toFixed(2)} kWp`;
+            `${anlagenBeschreibung} | Standort: ${anlagenKonfiguration.site ?? anlagenKonfiguration.standort} | ${(anlagenKonfiguration.systemProfile?.installedPowerKwp ?? anlagenKonfiguration.system_steckbrief?.installierte_leistung_kwp ?? 0).toFixed(2)} kWp`;
         renderStringDefinitions(anlagenKonfiguration);
         renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
         renderArchive();
@@ -770,25 +978,28 @@ function getWeatherSymbol(code) {
 
 function renderStringDefinitions(config) {
     const definitions = document.getElementById("string-definitions");
-    const entries = config.string_aufteilung.map(string => {
-        const gruppen = string.modul_gruppen_nach_neigung.map(gruppe =>
-            `${gruppe.anzahl_module}x ${gruppe.neigung_grad}° Neigung, ${gruppe.ausrichtung || `Azimut ${gruppe.azimut_grad}°`}`
+    const strings = config.stringConfiguration ?? config.string_aufteilung ?? [];
+    const entries = strings.map(string => {
+        const groups = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(gruppe =>
+            `${gruppe.moduleCount ?? gruppe.anzahl_module}x ${gruppe.tiltDegrees ?? gruppe.neigung_grad}° Neigung, ${gruppe.orientation ?? gruppe.ausrichtung || `Azimut ${gruppe.azimuthDegrees ?? gruppe.azimut_grad}°`}`
         ).join("; ");
-        const name = string.name || `String ${string.string_id}`;
-        return `<div class="string-definition"><strong>String ${string.string_id}: ${name}</strong> - ${string.gesamt_module_anzahl} Module, ${string.haupt_ausrichtung || "Ausrichtung nicht angegeben"}<br><small>${gruppen}</small></div>`;
+        const stringId = string.stringId ?? string.string_id;
+        const name = string.name || `String ${stringId}`;
+        return `<div class="string-definition"><strong>String ${stringId}: ${name}</strong> - ${string.totalModuleCount ?? string.gesamt_module_anzahl} Module, ${string.mainOrientation ?? string.haupt_ausrichtung || "Ausrichtung nicht angegeben"}<br><small>${groups}</small></div>`;
     }).join("");
 
-    const editor = config.string_aufteilung.map(string => {
-        const groups = string.modul_gruppen_nach_neigung.map((gruppe, groupIndex) => `
+    const editor = strings.map(string => {
+        const stringId = string.stringId ?? string.string_id;
+        const groups = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map((gruppe, groupIndex) => `
             <div class="configuration-group">
-                <label>${gruppe.beschreibung || `Modulgruppe ${groupIndex + 1}`}
-                    <small>${gruppe.anzahl_module} Module</small>
+                <label>${gruppe.description || `Modulgruppe ${groupIndex + 1}`}
+                    <small>${gruppe.moduleCount ?? gruppe.anzahl_module} Module</small>
                 </label>
-                <label>Azimut (°)<input type="number" step="0.1" data-string-id="${string.string_id}" data-group-index="${groupIndex}" data-field="azimut_grad" value="${gruppe.azimut_grad}"></label>
-                <label>Neigung (°)<input type="number" min="0" max="90" step="0.1" data-string-id="${string.string_id}" data-group-index="${groupIndex}" data-field="neigung_grad" value="${gruppe.neigung_grad}"></label>
-                <label>Verlustfaktor<input type="number" min="0" max="1" step="0.01" data-string-id="${string.string_id}" data-group-index="${groupIndex}" data-field="verlustfaktor" value="${gruppe.verlustfaktor ?? string.verlustfaktor ?? config.verlustfaktor_standard}"></label>
+                <label>Azimut (°)<input type="number" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="azimuthDegrees" value="${gruppe.azimuthDegrees ?? gruppe.azimut_grad}"></label>
+                <label>Neigung (°)<input type="number" min="0" max="90" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="tiltDegrees" value="${gruppe.tiltDegrees ?? gruppe.neigung_grad}"></label>
+                <label>Verlustfaktor<input type="number" min="0" max="1" step="0.01" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="lossFactor" value="${gruppe.lossFactor ?? gruppe.verlustfaktor ?? string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard}"></label>
             </div>`).join("");
-        return `<section class="configuration-string"><h3>String ${string.string_id}: ${string.name || `String ${string.string_id}`}</h3>${groups}</section>`;
+        return `<section class="configuration-string"><h3>String ${stringId}: ${string.name || `String ${stringId}`}</h3>${groups}</section>`;
     }).join("");
 
     definitions.innerHTML = `<h2>${getText("stringConfigTitle")}</h2>
@@ -815,17 +1026,34 @@ function applyStringConfiguration() {
             alert(getText("invalidNumber"));
             return;
         }
-        if (input.dataset.field === "verlustfaktor" && (value < 0 || value > 1)) {
+        if (input.dataset.field === "lossFactor" && (value < 0 || value > 1)) {
             input.focus();
             alert(getText("invalidLossFactor"));
             return;
         }
-        const string = changedConfiguration.string_aufteilung.find(item => String(item.string_id) === input.dataset.stringId);
-        string.modul_gruppen_nach_neigung[Number(input.dataset.groupIndex)][input.dataset.field] = value;
+        const string = (changedConfiguration.stringConfiguration ?? changedConfiguration.string_aufteilung ?? []).find(item => String(item.stringId ?? item.string_id) === input.dataset.stringId);
+        const groups = string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? [];
+        groups[Number(input.dataset.groupIndex)][input.dataset.field] = value;
     }
 
     anlagenKonfiguration = changedConfiguration;
-    localStorage.setItem("pv_string_configuration", JSON.stringify(anlagenKonfiguration.string_aufteilung));
+    localStorage.setItem("pv_string_configuration", JSON.stringify(anlagenKonfiguration.stringConfiguration.map(string => ({
+        stringId: string.stringId,
+        name: string.name,
+        totalModuleCount: string.totalModuleCount,
+        mainOrientation: string.mainOrientation,
+        lossFactor: string.lossFactor,
+        moduleGroupsByTilt: string.moduleGroupsByTilt.map(group => ({
+            moduleCount: group.moduleCount,
+            tiltDegrees: group.tiltDegrees,
+            azimuthDegrees: group.azimuthDegrees,
+            orientation: group.orientation,
+            lossFactor: group.lossFactor
+        }))
+    }))));
+    localStorage.removeItem("pv_string_configuration_v2");
+    localStorage.removeItem("pv_string_configuration_legacy");
+    localStorage.removeItem("pv_string_configuration_old");
     document.getElementById("configuration-status").innerText = getText("changesLoading");
     fetchAndCalculate();
 }
@@ -833,6 +1061,9 @@ function applyStringConfiguration() {
 function resetStringConfiguration() {
     anlagenKonfiguration = structuredClone(anlagenKonfigurationOriginal);
     localStorage.removeItem("pv_string_configuration");
+    localStorage.removeItem("pv_string_configuration_v2");
+    localStorage.removeItem("pv_string_configuration_legacy");
+    localStorage.removeItem("pv_string_configuration_old");
     renderStringDefinitions(anlagenKonfiguration);
     document.getElementById("configuration-status").innerText = getText("jsonRestored");
     fetchAndCalculate();
@@ -863,7 +1094,7 @@ function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dash
         const tempMax = dailyData.temperature_2m_max[i];
         const radSum = dailyData.shortwave_radiation_sum[i] / 3.6; // Horizontale Globalstrahlung zur Information
         const weatherType = getWeatherSymbol(dailyData.weather_code[i]);
-        const solarNoonElevation = getSolarNoonElevation(dateRaw, config.koordinaten.latitude);
+        const solarNoonElevation = getSolarNoonElevation(dateRaw, config.coordinates?.latitude ?? config.koordinaten?.latitude);
 
         const stringErtraege = calculateStringYields(dailyData.time[i], config, irradianceProfiles);
         const gesamtErtrag = stringErtraege.reduce((summe, string) => summe + string.ertrag, 0);
@@ -913,11 +1144,17 @@ function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dash
     grid.style.display = "grid";
 }
 
-const ARCHIVE_KEY = "pv_historical_archive";
+const ARCHIVE_KEY = "pv_historical_archive_v2";
+const LEGACY_ARCHIVE_KEY = "pv_historical_archive";
 
 function loadArchive() {
     try {
-        return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "{}");
+        const activeKey = localStorage.getItem(ARCHIVE_KEY) !== null ? ARCHIVE_KEY : LEGACY_ARCHIVE_KEY;
+        const archiveValue = localStorage.getItem(activeKey);
+        if (archiveValue && !localStorage.getItem(ARCHIVE_KEY)) {
+            localStorage.setItem(ARCHIVE_KEY, archiveValue);
+        }
+        return JSON.parse(archiveValue || "{}");
     } catch (error) {
         return {};
     }
@@ -1020,7 +1257,7 @@ async function recalculateSelectedArchiveDay() {
     button.innerText = getText("archiveRecalculateBusy");
     try {
         const date = new Date(`${record.date}T12:00:00`);
-        const { latitude, longitude } = anlagenKonfiguration.koordinaten;
+        const { latitude, longitude } = anlagenKonfiguration.coordinates ?? anlagenKonfiguration.koordinaten ?? {};
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weather_code,temperature_2m_max,shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${record.date}&end_date=${record.date}`;
         const [response, irradianceProfiles] = await Promise.all([
             fetch(url),
@@ -1072,12 +1309,20 @@ function clearArchive() {
 
 // LocalStorage-Funktionen für Realwerte
 function getActualValuesKey(dateStr) {
+    return `pv_actual_values_${dateStr}`;
+}
+
+function getLegacyActualValuesKey(dateStr) {
     return `pv_actual_${dateStr}`;
 }
 
 function loadActualValues(dateStr) {
     const key = getActualValuesKey(dateStr);
-    const stored = localStorage.getItem(key);
+    const legacyKey = getLegacyActualValuesKey(dateStr);
+    const stored = localStorage.getItem(key) || localStorage.getItem(legacyKey);
+    if (stored && !localStorage.getItem(key)) {
+        localStorage.setItem(key, stored);
+    }
     return stored ? JSON.parse(stored) : null;
 }
 
@@ -1096,15 +1341,16 @@ function openActualValuesModal(dateStr, cardIndex) {
     // Dynamisch die Eingabefelder für Strings generieren
     stringInputsDiv.innerHTML = '';
     if (anlagenKonfiguration) {
-        anlagenKonfiguration.string_aufteilung.forEach((string, index) => {
-            const stringId = string.string_id;
+        const strings = anlagenKonfiguration.stringConfiguration ?? anlagenKonfiguration.string_aufteilung ?? [];
+        strings.forEach((string) => {
+            const stringId = string.stringId ?? string.string_id;
             const existingValues = loadActualValues(dateStr);
             const currentValue = existingValues && existingValues[`string_${stringId}`] ? existingValues[`string_${stringId}`] : '';
             
             const inputGroup = document.createElement('div');
             inputGroup.className = 'input-group';
             inputGroup.innerHTML = `
-                <label>${string.name || `${getText("labels.string")} ${stringId}`} (${string.gesamt_module_anzahl} ${getText("labels.perModule")}, ${string.haupt_ausrichtung}):</label>
+                <label>${string.name || `${getText("labels.string")} ${stringId}`} (${string.totalModuleCount ?? string.gesamt_module_anzahl} ${getText("labels.perModule")}, ${string.mainOrientation ?? string.haupt_ausrichtung}):</label>
                 <input type="number" step="0.01" id="string-${stringId}-input" value="${currentValue}" placeholder="${getText("exampleValue")}" />
             `;
             stringInputsDiv.appendChild(inputGroup);
@@ -1128,8 +1374,9 @@ function saveActualValues() {
     
     const values = {};
     if (anlagenKonfiguration) {
-        anlagenKonfiguration.string_aufteilung.forEach(string => {
-            const stringId = string.string_id;
+        const strings = anlagenKonfiguration.stringConfiguration ?? anlagenKonfiguration.string_aufteilung ?? [];
+        strings.forEach(string => {
+            const stringId = string.stringId ?? string.string_id;
             const inputValue = document.getElementById(`string-${stringId}-input`).value;
             if (inputValue) {
                 values[`string_${stringId}`] = parseFloat(inputValue);
@@ -1220,7 +1467,10 @@ window.onclick = function(event) {
 };
 
 // Beim Start die API abfragen
-window.onload = fetchAndCalculate;
+window.onload = function() {
+    migrateLegacyStorageKeys();
+    fetchAndCalculate();
+};
 </script>
 
 </body>

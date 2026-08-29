@@ -1,71 +1,71 @@
 {
-  "standort": "Musterstadt",
-  "beschreibung": "Photovoltaikanlage Musterhaus",
-  "koordinaten": {
-    "latitude": 52.5200,
-    "longitude": 13.4050
+  "site": "Sample city",
+  "description": "Sample house photovoltaic system",
+  "coordinates": {
+    "latitude": 52.52,
+    "longitude": 13.405
   },
-  "verlustfaktor_standard": 0.85,
-  "system_steckbrief": {
-    "installierte_leistung_kwp": 8.0,
+  "defaultLossFactor": 0.85,
+  "systemProfile": {
+    "installedPowerKwp": 8.0,
     "module": {
-      "anzahl": 20,
-      "modell": "Muster-Modul 400 W",
-      "leistung_pro_modul_w": 400,
-      "optimierer": "Ja"
+      "count": 20,
+      "model": "Sample module 400 W",
+      "powerPerModuleW": 400,
+      "optimizer": "Yes"
     }
   },
-  "string_aufteilung": [
+  "stringConfiguration": [
     {
-      "string_id": 1,
-      "name": "Dach Nord",
-      "gesamt_module_anzahl": 8,
-      "haupt_ausrichtung": "Nord",
-      "verlustfaktor": 0.8,
-      "modul_gruppen_nach_neigung": [
+      "stringId": 1,
+      "name": "Roof north",
+      "totalModuleCount": 8,
+      "mainOrientation": "North",
+      "lossFactor": 0.8,
+      "moduleGroupsByTilt": [
         {
-          "anzahl_module": 5,
-          "neigung_grad": 35,
-          "azimut_grad": 180
+          "moduleCount": 5,
+          "tiltDegrees": 35,
+          "azimuthDegrees": 180
         },
         {
-          "anzahl_module": 3,
-          "neigung_grad": 25,
-          "azimut_grad": 180
+          "moduleCount": 3,
+          "tiltDegrees": 25,
+          "azimuthDegrees": 180
         }
       ]
     },
     {
-      "string_id": 2,
-      "name": "Dach Süd",
-      "gesamt_module_anzahl": 8,
-      "haupt_ausrichtung": "Süd",
-      "verlustfaktor": 0.85,
-      "modul_gruppen_nach_neigung": [
+      "stringId": 2,
+      "name": "Roof south",
+      "totalModuleCount": 8,
+      "mainOrientation": "South",
+      "lossFactor": 0.85,
+      "moduleGroupsByTilt": [
         {
-          "anzahl_module": 5,
-          "neigung_grad": 35,
-          "azimut_grad": 0
+          "moduleCount": 5,
+          "tiltDegrees": 35,
+          "azimuthDegrees": 0
         },
         {
-          "anzahl_module": 3,
-          "neigung_grad": 20,
-          "azimut_grad": 0
+          "moduleCount": 3,
+          "tiltDegrees": 20,
+          "azimuthDegrees": 0
         }
       ]
     },
     {
-      "string_id": 3,
-      "name": "Fassade Süd",
-      "gesamt_module_anzahl": 4,
-      "haupt_ausrichtung": "Südwand",
-      "verlustfaktor": 0.7,
-      "modul_gruppen_nach_neigung": [
+      "stringId": 3,
+      "name": "Facade south",
+      "totalModuleCount": 4,
+      "mainOrientation": "South facade",
+      "lossFactor": 0.7,
+      "moduleGroupsByTilt": [
         {
-          "anzahl_module": 4,
-          "neigung_grad": 90,
-          "azimut_grad": 0,
-          "verlustfaktor": 0.7
+          "moduleCount": 4,
+          "tiltDegrees": 90,
+          "azimuthDegrees": 0,
+          "lossFactor": 0.7
         }
       ]
     }

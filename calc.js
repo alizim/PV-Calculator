@@ -1,7 +1,7 @@
 function getAzimut(gruppe) {
-    const azimut = Number(gruppe.azimut_grad);
+    const azimut = Number(gruppe.azimuthDegrees ?? gruppe.azimut_grad);
     if (!Number.isFinite(azimut)) {
-        throw new Error(`Ungültiger Azimutwert: ${gruppe.azimut_grad}`);
+        throw new Error(`Ungültiger Azimutwert: ${gruppe.azimuthDegrees ?? gruppe.azimut_grad}`);
     }
 
     return ((azimut + 180) % 360 + 360) % 360 - 180;
@@ -28,7 +28,7 @@ function getSolarNoonElevation(date, latitude) {
 function getSolarIncidenceAngle(date, gruppe, latitude) {
     const solarElevation = getSolarNoonElevation(date, latitude);
     const solarZenith = (90 - solarElevation) * Math.PI / 180;
-    const moduleTilt = Number(gruppe.neigung_grad) * Math.PI / 180;
+    const moduleTilt = Number(gruppe.tiltDegrees ?? gruppe.neigung_grad) * Math.PI / 180;
     const moduleAzimuth = getAzimut(gruppe) * Math.PI / 180;
     const cosine = Math.cos(solarZenith) * Math.cos(moduleTilt) +
         Math.sin(solarZenith) * Math.sin(moduleTilt) * Math.cos(moduleAzimuth);
@@ -38,35 +38,36 @@ function getSolarIncidenceAngle(date, gruppe, latitude) {
 
 function calculateStringYields(date, config, irradianceProfiles) {
     const dateObject = new Date(date);
-    const modulLeistung_kWp = config.system_steckbrief.module.leistung_pro_modul_w / 1000;
+    const modulLeistung_kWp = (config.systemProfile?.module?.powerPerModuleW ?? config.system_steckbrief?.module?.leistung_pro_modul_w ?? 0) / 1000;
 
-    return config.string_aufteilung.map(string => {
-        const stringVerlustfaktor = string.verlustfaktor !== undefined ?
-            string.verlustfaktor : config.verlustfaktor_standard;
+    const stringList = config.stringConfiguration ?? config.string_aufteilung ?? [];
 
-        const gruppen = string.modul_gruppen_nach_neigung.map(gruppe => {
-            const leistung_kWp = gruppe.anzahl_module * modulLeistung_kWp;
+    return stringList.map(string => {
+        const stringVerlustfaktor = string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85;
+
+        const gruppen = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(gruppe => {
+            const leistung_kWp = (gruppe.moduleCount ?? gruppe.anzahl_module ?? 0) * modulLeistung_kWp;
             const azimut = getAzimut(gruppe);
             const irradiance = getDailyIrradiance(
-                irradianceProfiles.get(`${gruppe.neigung_grad}:${azimut}`),
+                irradianceProfiles.get(`${gruppe.tiltDegrees ?? gruppe.neigung_grad}:${azimut}`),
                 date
             );
 
             return {
                 ...gruppe,
-                winkel: getSolarIncidenceAngle(dateObject, gruppe, config.koordinaten.latitude),
+                winkel: getSolarIncidenceAngle(dateObject, gruppe, config.coordinates?.latitude ?? config.koordinaten?.latitude),
                 ertrag: irradiance * leistung_kWp *
-                    (gruppe.verlustfaktor !== undefined ? gruppe.verlustfaktor : stringVerlustfaktor)
+                    (gruppe.lossFactor ?? gruppe.verlustfaktor ?? stringVerlustfaktor)
             };
         });
 
         return {
-            id: string.string_id,
-            name: string.name || `String ${string.string_id}`,
-            ausrichtung: string.haupt_ausrichtung,
-            module: string.gesamt_module_anzahl,
+            id: string.stringId ?? string.string_id,
+            name: string.name || `String ${string.stringId ?? string.string_id}`,
+            ausrichtung: string.mainOrientation ?? string.haupt_ausrichtung,
+            module: string.totalModuleCount ?? string.gesamt_module_anzahl,
             neigungen: gruppen.map(gruppe =>
-                `${gruppe.anzahl_module}x ${gruppe.neigung_grad}° / ${gruppe.winkel.toFixed(1)}° Einfall`
+                `${gruppe.moduleCount ?? gruppe.anzahl_module}x ${gruppe.tiltDegrees ?? gruppe.neigung_grad}° / ${gruppe.winkel.toFixed(1)}° Einfall`
             ).join(" + "),
             ertrag: gruppen.reduce((summe, gruppe) => summe + gruppe.ertrag, 0),
             gruppen

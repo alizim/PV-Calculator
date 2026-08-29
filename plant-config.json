@@ -1,76 +1,76 @@
 {
-  "standort": "Norderstedt",
-  "beschreibung": "Photovoltaikanlage mit Dach- und Fassadenmodulen",
-  "koordinaten": {
+  "site": "Norderstedt",
+  "description": "Photovoltaic system with roof and facade modules",
+  "coordinates": {
     "latitude": 53.7065,
     "longitude": 10.0101
   },
-  "verlustfaktor_standard": 0.85,
-  "system_steckbrief": {
-    "installierte_leistung_kwp": 15.36,
+  "defaultLossFactor": 0.85,
+  "systemProfile": {
+    "installedPowerKwp": 15.36,
     "module": {
-      "anzahl": 32,
-      "modell": "AIKO ABC 480W Premium",
-      "leistung_pro_modul_w": 480,
-      "optimierer": "Alle 32 Module mit Leistungsoptimierern ausgestattet"
+      "count": 32,
+      "model": "AIKO ABC 480W Premium",
+      "powerPerModuleW": 480,
+      "optimizer": "All 32 modules equipped with power optimizers"
     }
   },
-  "string_aufteilung": [
+  "stringConfiguration": [
     {
-      "string_id": 1,
-      "name": "Norddach",
-      "gesamt_module_anzahl": 13,
-      "haupt_ausrichtung": "Nordnordwest (NNW)",
-      "verlustfaktor": 0.39,
-      "modul_gruppen_nach_neigung": [
+      "stringId": 1,
+      "name": "North roof",
+      "totalModuleCount": 13,
+      "mainOrientation": "North-northwest (NNW)",
+      "lossFactor": 0.39,
+      "moduleGroupsByTilt": [
         {
-          "anzahl_module": 10,
-          "neigung_grad": 49,
-          "azimut_grad": 163.5
+          "moduleCount": 10,
+          "tiltDegrees": 49,
+          "azimuthDegrees": 163.5
         },
         {
-          "anzahl_module": 3,
-          "neigung_grad": 24,
-          "azimut_grad": 163.5
+          "moduleCount": 3,
+          "tiltDegrees": 24,
+          "azimuthDegrees": 163.5
         }
       ]
     },
     {
-      "string_id": 2,
-      "name": "Süddach rechts",
-      "gesamt_module_anzahl": 8,
-      "haupt_ausrichtung": "Südsüdost (SSO)",
-      "verlustfaktor": 0.85,
-      "modul_gruppen_nach_neigung": [
+      "stringId": 2,
+      "name": "South roof right",
+      "totalModuleCount": 8,
+      "mainOrientation": "South-southeast (SSE)",
+      "lossFactor": 0.85,
+      "moduleGroupsByTilt": [
         {
-          "anzahl_module": 5,
-          "neigung_grad": 49,
-          "azimut_grad": -16.5
+          "moduleCount": 5,
+          "tiltDegrees": 49,
+          "azimuthDegrees": -16.5
         },
         {
-          "anzahl_module": 3,
-          "neigung_grad": 24,
-          "azimut_grad": -16.5
+          "moduleCount": 3,
+          "tiltDegrees": 24,
+          "azimuthDegrees": -16.5
         }
       ]
     },
     {
-      "string_id": 3,
-      "name": "Süddach links und Fassade",
-      "gesamt_module_anzahl": 11,
-      "haupt_ausrichtung": "Südsüdost (SSO) + Wand",
-      "verlustfaktor": 0.85,
-      "modul_gruppen_nach_neigung": [
+      "stringId": 3,
+      "name": "South roof left and facade",
+      "totalModuleCount": 11,
+      "mainOrientation": "South-southeast (SSE) + wall",
+      "lossFactor": 0.85,
+      "moduleGroupsByTilt": [
         {
-          "anzahl_module": 8,
-          "neigung_grad": 49,
-          "azimut_grad": -16.5
+          "moduleCount": 8,
+          "tiltDegrees": 49,
+          "azimuthDegrees": -16.5
         },
         {
-          "anzahl_module": 3,
-          "neigung_grad": 90,
-          "azimut_grad": -16.5,
-          "verlustfaktor": 0.5
+          "moduleCount": 3,
+          "tiltDegrees": 90,
+          "azimuthDegrees": -16.5,
+          "lossFactor": 0.5
         }
       ]
     }
