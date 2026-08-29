@@ -22,22 +22,28 @@
             justify-content: center;
             gap: 12px;
             position: relative;
+            min-height: 52px;
+            padding-top: 8px;
         }
         h1 {
             color: #2c3e50;
             text-align: center;
             margin-bottom: 5px;
+            padding-right: 56px;
         }
         #language-switch {
             position: absolute;
             right: 0;
+            top: 0;
             background: #2c3e50;
             color: white;
             border: none;
             border-radius: 999px;
-            padding: 6px 12px;
+            padding: 6px 10px;
             cursor: pointer;
             font-weight: bold;
+            line-height: 1.2;
+            box-shadow: 0 2px 6px rgba(44, 62, 80, 0.15);
         }
         .subtitle {
             text-align: center;
@@ -399,7 +405,7 @@
 <div class="container">
     <div class="header-row">
         <h1 id="app-title" data-default="☀️ Live PV-Ertragsprognose & Historie">☀️ Live PV-Ertragsprognose & Historie</h1>
-        <button id="language-switch" type="button" onclick="toggleLanguage()" aria-label="Switch language">EN</button>
+        <button id="language-switch" type="button" onclick="toggleLanguage()" aria-label="Switch language">🌐 EN</button>
     </div>
     <div class="subtitle" id="anlage-subtitle" data-default="Echtzeitdaten via Open-Meteo API">Echtzeitdaten via Open-Meteo API</div>
     <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">String-Konfiguration anzeigen</button>

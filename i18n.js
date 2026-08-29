@@ -246,7 +246,8 @@ function applyUiTranslations() {
 
   const languageSwitch = document.getElementById("language-switch");
   if (languageSwitch) {
-    languageSwitch.textContent = currentLocale === "de" ? getText("locale.switchToEnglish") : getText("locale.switchToGerman");
+    languageSwitch.textContent = currentLocale === "de" ? "🌐 EN" : "🌐 DE";
+    languageSwitch.setAttribute("aria-label", currentLocale === "de" ? "Switch to English" : "Wechsel zu Deutsch");
   }
 
   const tableHeaders = document.querySelectorAll("#archive-table th");
