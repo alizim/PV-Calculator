@@ -578,8 +578,27 @@ const KONFIGURATIONS_URLEN = [
     "https://raw.githubusercontent.com/alizim/PV-Calculator/main/plant-config.json"
 ];
 
-const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-const labelNames = { "-2": getText("labels.dayBeforeYesterday"), "-1": getText("labels.yesterday"), "0": getText("labels.today"), "1": getText("labels.tomorrow"), "2": getText("labels.dayAfterTomorrow") };
+let weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+let labelNames = { "-2": getText("labels.dayBeforeYesterday"), "-1": getText("labels.yesterday"), "0": getText("labels.today"), "1": getText("labels.tomorrow"), "2": getText("labels.dayAfterTomorrow") };
+
+function refreshDayLabels() {
+    weekdayNames = [
+        getText("weekday.sunday"),
+        getText("weekday.monday"),
+        getText("weekday.tuesday"),
+        getText("weekday.wednesday"),
+        getText("weekday.thursday"),
+        getText("weekday.friday"),
+        getText("weekday.saturday")
+    ];
+    labelNames = {
+        "-2": getText("labels.dayBeforeYesterday"),
+        "-1": getText("labels.yesterday"),
+        "0": getText("labels.today"),
+        "1": getText("labels.tomorrow"),
+        "2": getText("labels.dayAfterTomorrow")
+    };
+}
 
 document.getElementById("config-upload").addEventListener("change", handleConfigUpload);
 

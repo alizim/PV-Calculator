@@ -76,6 +76,15 @@ const I18N = {
       configurationStatus: "Änderungen werden geladen...",
       notSet: "nicht gesetzt"
     },
+    weekday: {
+      sunday: "Sonntag",
+      monday: "Montag",
+      tuesday: "Dienstag",
+      wednesday: "Mittwoch",
+      thursday: "Donnerstag",
+      friday: "Freitag",
+      saturday: "Samstag"
+    },
     locale: {
       switchToEnglish: "EN",
       switchToGerman: "DE"
@@ -157,6 +166,15 @@ const I18N = {
       moduleGroup: "Module group",
       configurationStatus: "Applying changes...",
       notSet: "not set"
+    },
+    weekday: {
+      sunday: "Sunday",
+      monday: "Monday",
+      tuesday: "Tuesday",
+      wednesday: "Wednesday",
+      thursday: "Thursday",
+      friday: "Friday",
+      saturday: "Saturday"
     },
     locale: {
       switchToEnglish: "EN",
@@ -281,6 +299,10 @@ function applyUiTranslations() {
   tableHeaders.forEach((header, index) => {
     if (tableKeys[index]) header.textContent = getText(tableKeys[index]);
   });
+
+  if (typeof refreshDayLabels === "function") {
+    refreshDayLabels();
+  }
 }
 
 applyUiTranslations();
