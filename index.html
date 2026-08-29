@@ -201,17 +201,6 @@
             font-size: 0.9em;
             margin: 8px 0 0;
         }
-        .migration-status {
-            display: none;
-            margin: 10px 0 0;
-            padding: 8px 10px;
-            border-radius: 6px;
-            background: #fff7e6;
-            border: 1px solid #f5c26b;
-            color: #8a5a00;
-            font-size: 0.85em;
-            line-height: 1.4;
-        }
         @media (max-width: 700px) {
             .header-row {
                 justify-content: space-between;
@@ -520,7 +509,6 @@
                 <div id="settings-menu" class="settings-menu" role="menu" aria-label="Settings menu">
                     <button id="download-template-btn" class="settings-menu-item" type="button" onclick="downloadTemplate()">Download template</button>
                     <button id="export-plant-btn" class="settings-menu-item" type="button" onclick="exportPlantConfiguration()">Export plant</button>
-                    <button id="clear-legacy-storage-btn" class="settings-menu-item" type="button" onclick="clearLegacyStorageData()">Clear legacy storage</button>
                     <label id="upload-json-btn" class="settings-menu-item upload-menu-item" role="menuitem">
                         <span>Upload JSON</span>
                         <input id="config-upload" type="file" accept=".json,application/json" />
@@ -532,8 +520,7 @@
     <div class="subtitle" id="anlage-subtitle" data-default="Echtzeitdaten via Open-Meteo API">Echtzeitdaten via Open-Meteo API</div>
     <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">String-Konfiguration anzeigen</button>
     <div id="string-definitions" class="string-definitions" style="display: none;"></div>
-    <p id="migration-status" class="migration-status"></p>
-    
+
     <div id="loading-text" class="loading" data-default="Lade Live-Wetterdaten und berechne Erträge...">Lade Live-Wetterdaten und berechne Erträge...</div>
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
 
@@ -584,8 +571,6 @@
 <script src="i18n.js"></script>
 <script src="calc.js"></script>
 <script>
-migrateLegacyStorageKeys();
-
 let anlagenKonfiguration;
 let anlagenKonfigurationOriginal;
 const KONFIGURATIONS_URLEN = [
@@ -714,158 +699,6 @@ function serializePlantConfiguration(config) {
         systemProfile: normalized.systemProfile,
         stringConfiguration: normalized.stringConfiguration
     }, null, 2);
-}
-
-function getLegacyStorageKeys() {
-    const legacyPatternKeys = [
-        "pv_uploaded_configuration_v2",
-        "pv_uploaded_configuration_legacy",
-        "pv_uploaded_configuration_old",
-        "pv_string_configuration_v2",
-        "pv_string_configuration_legacy",
-        "pv_string_configuration_old",
-        "pv_historical_archive_v2",
-        "pv_historical_archive_legacy",
-        "pv_historical_archive_old"
-    ];
-
-    const legacyActualKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
-    return [...new Set([...legacyPatternKeys.filter(key => localStorage.getItem(key) !== null), ...legacyActualKeys])];
-}
-
-function getMigrationStateSummary() {
-    const canonicalMappings = [
-        ["pv_uploaded_configuration", ["pv_uploaded_configuration_v2", "pv_uploaded_configuration_legacy", "pv_uploaded_configuration_old"]],
-        ["pv_string_configuration", ["pv_string_configuration_v2", "pv_string_configuration_legacy", "pv_string_configuration_old"]],
-        ["pv_historical_archive", ["pv_historical_archive_v2", "pv_historical_archive_legacy", "pv_historical_archive_old"]]
-    ];
-
-    const groups = canonicalMappings.map(([canonicalKey, legacyKeys]) => {
-        const legacyValues = legacyKeys.filter(key => localStorage.getItem(key) !== null);
-        const hasCanonical = localStorage.getItem(canonicalKey) !== null;
-        return {
-            canonicalKey,
-            legacyKeys,
-            legacyValues,
-            hasCanonical,
-            legacyCount: legacyValues.length
-        };
-    });
-
-    const legacyActualKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
-    const actualValues = legacyActualKeys.map(key => ({
-        legacyKey: key,
-        canonicalKey: `pv_actual_values_${key.replace(/^pv_actual_/, "")}`,
-        hasCanonical: localStorage.getItem(`pv_actual_values_${key.replace(/^pv_actual_/, "")}`) !== null
-    }));
-
-    const allGroupsMigrated = groups.every(group => group.legacyCount === 0 || group.hasCanonical) && actualValues.every(value => !value.legacyKey || value.hasCanonical);
-    return { groups, actualValues, allGroupsMigrated };
-}
-
-function updateMigrationNotice() {
-    const migrationStatus = document.getElementById("migration-status");
-    if (!migrationStatus) return;
-
-    const summary = getMigrationStateSummary();
-    const legacyKeys = getLegacyStorageKeys();
-
-    if (legacyKeys.length === 0) {
-        migrationStatus.style.display = "none";
-        migrationStatus.textContent = "";
-        return;
-    }
-
-    const missingCanonicalKeys = summary.groups
-        .filter(group => group.legacyCount > 0 && !group.hasCanonical)
-        .map(group => `${group.canonicalKey} (legacy: ${group.legacyValues.join(", ")})`);
-
-    const missingActualKeys = summary.actualValues
-        .filter(value => value.legacyKey && !value.hasCanonical)
-        .map(value => `${value.legacyKey} -> ${value.canonicalKey}`);
-
-    migrationStatus.style.display = "block";
-
-    if (summary.allGroupsMigrated) {
-        migrationStatus.textContent = `Legacy migration detected, but every legacy entry already has a canonical replacement. You can remove the migration compatibility code after the old storage keys are cleared.`;
-        return;
-    }
-
-    const missingList = [...missingCanonicalKeys, ...missingActualKeys];
-    migrationStatus.textContent = `Legacy localStorage data still needs migration. Missing canonical entries: ${missingList.length ? missingList.join("; ") : "none"}. Keep the migration compatibility code until all legacy keys are cleared.`;
-}
-
-function migrateLegacyStorageKeys() {
-    const canonicalMappings = [
-        ["pv_uploaded_configuration", ["pv_uploaded_configuration_v2", "pv_uploaded_configuration_legacy", "pv_uploaded_configuration_old"]],
-        ["pv_string_configuration", ["pv_string_configuration_v2", "pv_string_configuration_legacy", "pv_string_configuration_old"]],
-        ["pv_historical_archive", ["pv_historical_archive_v2", "pv_historical_archive_legacy", "pv_historical_archive_old"]]
-    ];
-
-    let legacyDetected = false;
-
-    for (const [canonicalKey, legacyKeys] of canonicalMappings) {
-        if (localStorage.getItem(canonicalKey)) continue;
-
-        for (const legacyKey of legacyKeys) {
-            const legacyValue = localStorage.getItem(legacyKey);
-            if (legacyValue) {
-                localStorage.setItem(canonicalKey, legacyValue);
-                legacyDetected = true;
-                break;
-            }
-        }
-    }
-
-    const legacyActualKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
-    for (const legacyKey of legacyActualKeys) {
-        const date = legacyKey.replace(/^pv_actual_/, "");
-        const targetKey = `pv_actual_values_${date}`;
-        const legacyValue = localStorage.getItem(legacyKey);
-        if (legacyValue && !localStorage.getItem(targetKey)) {
-            localStorage.setItem(targetKey, legacyValue);
-            legacyDetected = true;
-        }
-    }
-
-    if (legacyDetected) {
-        console.warn("Legacy migration active. Keep compatibility code until localStorage contains no legacy keys.");
-    }
-
-    updateMigrationNotice();
-    return legacyDetected;
-}
-
-function clearLegacyStorageData() {
-    const legacyKeys = [
-        "pv_uploaded_configuration_v2",
-        "pv_uploaded_configuration_legacy",
-        "pv_uploaded_configuration_old",
-        "pv_string_configuration_v2",
-        "pv_string_configuration_legacy",
-        "pv_string_configuration_old",
-        "pv_historical_archive_v2",
-        "pv_historical_archive_legacy",
-        "pv_historical_archive_old"
-    ];
-
-    const actualLegacyKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
-    const allLegacyKeys = [...legacyKeys, ...actualLegacyKeys];
-    const matchedKeys = allLegacyKeys.filter(key => localStorage.getItem(key) !== null);
-
-    if (matchedKeys.length === 0) {
-        updateMigrationNotice();
-        return;
-    }
-
-    const confirmed = window.confirm(getText("confirmClearLegacyStorage"));
-    if (!confirmed) return;
-
-    matchedKeys.forEach(key => localStorage.removeItem(key));
-    updateMigrationNotice();
-    if (typeof fetchAndCalculate === "function") {
-        fetchAndCalculate();
-    }
 }
 
 function toggleSettingsMenu() {
@@ -1105,27 +938,27 @@ function renderStringDefinitions(config) {
     const strings = config.stringConfiguration ?? config.string_aufteilung ?? [];
     const entries = strings.map(string => {
         const groups = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(gruppe => {
-            const orientation = gruppe.orientation ?? gruppe.ausrichtung ?? `Azimut ${gruppe.azimuthDegrees ?? gruppe.azimut_grad ?? 0}°`;
-            return `${gruppe.moduleCount ?? gruppe.anzahl_module}x ${gruppe.tiltDegrees ?? gruppe.neigung_grad}° Neigung, ${orientation}`;
+            const orientation = gruppe.orientation ?? gruppe.ausrichtung ?? `${getText("labels.azimuth")} ${gruppe.azimuthDegrees ?? gruppe.azimut_grad ?? 0}°`;
+            return `${gruppe.moduleCount ?? gruppe.anzahl_module}x ${gruppe.tiltDegrees ?? gruppe.neigung_grad}° ${getText("labels.tilt")}, ${orientation}`;
         }).join("; ");
         const stringId = string.stringId ?? string.string_id;
-        const name = string.name || `String ${stringId}`;
-        const mainOrientation = string.mainOrientation ?? string.haupt_ausrichtung ?? "Ausrichtung nicht angegeben";
-        return `<div class="string-definition"><strong>String ${stringId}: ${name}</strong> - ${string.totalModuleCount ?? string.gesamt_module_anzahl} Module, ${mainOrientation}<br><small>${groups}</small></div>`;
+        const name = string.name || `${getText("labels.string")} ${stringId}`;
+        const mainOrientation = string.mainOrientation ?? string.haupt_ausrichtung ?? getText("labels.noOrientation");
+        return `<div class="string-definition"><strong>${getText("labels.string")} ${stringId}: ${name}</strong> - ${string.totalModuleCount ?? string.gesamt_module_anzahl} ${getText("labels.perModule")}, ${mainOrientation}<br><small>${groups}</small></div>`;
     }).join("");
 
     const editor = strings.map(string => {
         const stringId = string.stringId ?? string.string_id;
         const groups = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map((gruppe, groupIndex) => `
             <div class="configuration-group">
-                <label>${gruppe.description || `Modulgruppe ${groupIndex + 1}`}
-                    <small>${gruppe.moduleCount ?? gruppe.anzahl_module} Module</small>
+                <label>${gruppe.description || `${getText("labels.moduleGroup")} ${groupIndex + 1}`}
+                    <small>${gruppe.moduleCount ?? gruppe.anzahl_module} ${getText("labels.perModule")}</small>
                 </label>
-                <label>Azimut (°)<input type="number" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="azimuthDegrees" value="${gruppe.azimuthDegrees ?? gruppe.azimut_grad}"></label>
-                <label>Neigung (°)<input type="number" min="0" max="90" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="tiltDegrees" value="${gruppe.tiltDegrees ?? gruppe.neigung_grad}"></label>
-                <label>Verlustfaktor<input type="number" min="0" max="1" step="0.01" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="lossFactor" value="${gruppe.lossFactor ?? gruppe.verlustfaktor ?? string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard}"></label>
+                <label>${getText("labels.azimuth")} (°)<input type="number" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="azimuthDegrees" value="${gruppe.azimuthDegrees ?? gruppe.azimut_grad}"></label>
+                <label>${getText("labels.tilt")} (°)<input type="number" min="0" max="90" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="tiltDegrees" value="${gruppe.tiltDegrees ?? gruppe.neigung_grad}"></label>
+                <label>${getText("labels.loss")}<input type="number" min="0" max="1" step="0.01" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="lossFactor" value="${gruppe.lossFactor ?? gruppe.verlustfaktor ?? string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard}"></label>
             </div>`).join("");
-        return `<section class="configuration-string"><h3>String ${stringId}: ${string.name || `String ${stringId}`}</h3>${groups}</section>`;
+        return `<section class="configuration-string"><h3>${getText("labels.string")} ${stringId}: ${string.name || `${getText("labels.string")} ${stringId}`}</h3>${groups}</section>`;
     }).join("");
 
     definitions.innerHTML = `<h2>${getText("stringConfigTitle")}</h2>
@@ -1595,7 +1428,6 @@ window.onclick = function(event) {
 
 // Beim Start die API abfragen
 window.onload = function() {
-    migrateLegacyStorageKeys();
     fetchAndCalculate();
 };
 </script>

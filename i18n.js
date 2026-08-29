@@ -46,8 +46,6 @@ const I18N = {
     horizontalRadiation: "horizontale Strahlung",
     storedTiltedHours: "gespeicherte geneigte Stundenwerte",
     confirmClearArchive: "Alle historischen Prognose-, Wetter- und Einstrahlungsdaten löschen?",
-    confirmClearLegacyStorage: "Legacy-Storage-Einträge löschen? Dadurch werden alte Migrationstypen entfernt, die nicht mehr benötigt werden.",
-    clearLegacyStorage: "Legacy-Storage löschen",
     exampleValue: "z.B. 22.85",
     weather: {
       sun: "☀️ Sonne",
@@ -130,8 +128,6 @@ const I18N = {
     horizontalRadiation: "horizontal radiation",
     storedTiltedHours: "stored tilted hourly values",
     confirmClearArchive: "Delete all historical forecast, weather, and irradiance data?",
-    confirmClearLegacyStorage: "Clear legacy storage entries? This removes old migration keys that are no longer needed.",
-    clearLegacyStorage: "Clear legacy storage",
     exampleValue: "e.g. 22.85",
     weather: {
       sun: "☀️ Sunny",
@@ -279,9 +275,6 @@ function applyUiTranslations() {
     const uploadLabel = uploadJsonButton.querySelector("span");
     if (uploadLabel) uploadLabel.textContent = getText("uploadJson");
   }
-
-  const clearLegacyButton = document.getElementById("clear-legacy-storage-btn");
-  if (clearLegacyButton) clearLegacyButton.textContent = getText("clearLegacyStorage");
 
   const tableHeaders = document.querySelectorAll("#archive-table th");
   const tableKeys = ["archiveTableDate", "archiveTableWeather", "archiveTableForecast", "archiveTableActual", "archiveTableDeviation"];
