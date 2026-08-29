@@ -694,8 +694,8 @@ function normalizeCoordinates(rawCoordinates) {
     const longitude = Number(source.longitude ?? source.lon ?? source.x ?? 0);
 
     const normalized = {
-        latitude: Number.isFinite(latitude) ? latitude : 0,
-        longitude: Number.isFinite(longitude) ? longitude : 0
+        latitude: Number.isFinite(latitude) ? Math.min(90, Math.max(-90, latitude)) : 0,
+        longitude: Number.isFinite(longitude) ? Math.min(180, Math.max(-180, longitude)) : 0
     };
 
     applyLegacyAliases(normalized, "latitude", "latitude");
@@ -932,19 +932,6 @@ async function fetchAndCalculate() {
         }
 
         if (!anlagenKonfiguration) {
-            const uploadedConfig = localStorage.getItem("pv_uploaded_configuration");
-            if (uploadedConfig) {
-                try {
-                    anlagenKonfiguration = normalizePlantConfiguration(JSON.parse(uploadedConfig));
-                    anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
-                    localStorage.setItem("pv_uploaded_configuration", serializePlantConfiguration(anlagenKonfiguration));
-                } catch (error) {
-                    localStorage.removeItem("pv_uploaded_configuration");
-                }
-            }
-        }
-
-        if (!anlagenKonfiguration) {
             let letzterKonfigurationsfehler;
             for (const konfigurationsUrl of KONFIGURATIONS_URLEN) {
                 try {
@@ -974,6 +961,18 @@ async function fetchAndCalculate() {
                     break;
                 } catch (error) {
                     letzterKonfigurationsfehler = error;
+                }
+            }
+            if (!anlagenKonfiguration) {
+                const uploadedConfig = localStorage.getItem("pv_uploaded_configuration");
+                if (uploadedConfig) {
+                    try {
+                        anlagenKonfiguration = normalizePlantConfiguration(JSON.parse(uploadedConfig));
+                        anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
+                        localStorage.setItem("pv_uploaded_configuration", serializePlantConfiguration(anlagenKonfiguration));
+                    } catch (error) {
+                        localStorage.removeItem("pv_uploaded_configuration");
+                    }
                 }
             }
             if (!anlagenKonfiguration) {

@@ -20,9 +20,11 @@ function getDayOfYear(date) {
 }
 
 function getSolarNoonElevation(date, latitude) {
+    const safeLatitude = Number.isFinite(Number(latitude)) ? Math.min(90, Math.max(-90, Number(latitude))) : 0;
     const dayOfYear = getDayOfYear(date);
     const declination = 23.44 * Math.sin((2 * Math.PI * (dayOfYear - 81)) / 365);
-    return 90 - Math.abs(latitude - declination);
+    const elevation = 90 - Math.abs(safeLatitude - declination);
+    return Math.max(0, Math.min(90, elevation));
 }
 
 function getSolarIncidenceAngle(date, gruppe, latitude) {
