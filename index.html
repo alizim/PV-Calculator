@@ -1289,6 +1289,27 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
         : (historicalReference.annualEstimate || 0);
     const annualEstimate = historicalAverage > 0 ? historicalAverage : currentProjection;
 
+    const today = new Date();
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+    const dayOfYear = Math.max(1, Math.min(365, Math.floor((today - yearStart) / 86400000) + 1));
+    const totalDaysOfYear = new Date(today.getFullYear(), 11, 31).getDate();
+    const progressPercent = Math.min(100, (dayOfYear / totalDaysOfYear) * 100);
+
+    const archive = loadArchive();
+    let realizedSoFar = 0;
+    Object.values(archive || {}).forEach(record => {
+        if (!record || !record.date || Number(record.date.slice(0, 4)) !== today.getFullYear() || !record.actual) return;
+        const actualTotal = Object.values(record.actual).reduce((sum, value) => sum + Number(value || 0), 0);
+        if (Number.isFinite(actualTotal)) {
+            realizedSoFar += actualTotal;
+        }
+    });
+
+    const expectedSoFar = annualEstimate * (progressPercent / 100);
+    const realizedRatio = expectedSoFar > 0 ? realizedSoFar / expectedSoFar : 0;
+    const progressBarColor = realizedRatio >= 1 ? "#27ae60" : realizedRatio >= 0.8 ? "#f39c12" : "#e74c3c";
+    const progressText = realizedRatio >= 1 ? getText("annualProgressAhead") : realizedRatio >= 0.8 ? getText("annualProgressOnTrack") : getText("annualProgressBehind");
+
     panel.innerHTML = `
         <div class="annual-summary">
             <h3>${getText("annualForecastTitle")}</h3>
@@ -1310,6 +1331,21 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
                     <strong>${visibleDays} ${getText("labels.archive")}</strong>
                 </div>
             </div>
+
+            <div style="margin-top: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.88em; color: #475569;">
+                    <span>${getText("annualProgress")}</span>
+                    <strong>${Math.round(progressPercent)}%</strong>
+                </div>
+                <div style="width: 100%; height: 12px; background: rgba(148, 163, 184, 0.25); border-radius: 999px; overflow: hidden;">
+                    <div style="width: ${Math.min(100, progressPercent)}%; height: 100%; background: ${progressBarColor}; border-radius: 999px; transition: width 0.25s ease;"></div>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.86em; color: #475569;">
+                    <span>${realizedSoFar.toFixed(0)} kWh / ${expectedSoFar.toFixed(0)} kWh ${getText("annualProgressExpected")}</span>
+                    <span style="display: inline-block; margin-left: 8px; color: ${progressBarColor}; font-weight: 700;">${progressText}</span>
+                </div>
+            </div>
+
             <p class="annual-note">${getText("annualEstimateNote")}</p>
         </div>
     `;
