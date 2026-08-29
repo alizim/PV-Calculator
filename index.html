@@ -932,7 +932,7 @@ async function fetchAndCalculate() {
         }
 
         if (!anlagenKonfiguration) {
-            const uploadedConfig = localStorage.getItem("pv_uploaded_configuration") || localStorage.getItem("pv_uploaded_configuration_v2") || localStorage.getItem("pv_uploaded_configuration_legacy") || localStorage.getItem("pv_uploaded_configuration_old");
+            const uploadedConfig = localStorage.getItem("pv_uploaded_configuration");
             if (uploadedConfig) {
                 try {
                     anlagenKonfiguration = normalizePlantConfiguration(JSON.parse(uploadedConfig));
@@ -940,9 +940,6 @@ async function fetchAndCalculate() {
                     localStorage.setItem("pv_uploaded_configuration", serializePlantConfiguration(anlagenKonfiguration));
                 } catch (error) {
                     localStorage.removeItem("pv_uploaded_configuration");
-                    localStorage.removeItem("pv_uploaded_configuration_v2");
-                    localStorage.removeItem("pv_uploaded_configuration_legacy");
-                    localStorage.removeItem("pv_uploaded_configuration_old");
                 }
             }
         }
@@ -956,7 +953,7 @@ async function fetchAndCalculate() {
                     if (!configResponse.ok) throw new Error(`HTTP ${configResponse.status}`);
                     anlagenKonfiguration = normalizePlantConfiguration(await configResponse.json());
                     anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
-                    const gespeicherteStrings = localStorage.getItem("pv_string_configuration") || localStorage.getItem("pv_string_configuration_v2") || localStorage.getItem("pv_string_configuration_legacy") || localStorage.getItem("pv_string_configuration_old");
+                    const gespeicherteStrings = localStorage.getItem("pv_string_configuration");
                     if (gespeicherteStrings) {
                         anlagenKonfiguration.stringConfiguration = JSON.parse(gespeicherteStrings).map((string, index) => normalizeStringConfiguration(string, index, anlagenKonfiguration.defaultLossFactor));
                         localStorage.setItem("pv_string_configuration", JSON.stringify(anlagenKonfiguration.stringConfiguration.map(string => ({
@@ -1102,9 +1099,6 @@ function applyStringConfiguration() {
             lossFactor: group.lossFactor
         }))
     }))));
-    localStorage.removeItem("pv_string_configuration_v2");
-    localStorage.removeItem("pv_string_configuration_legacy");
-    localStorage.removeItem("pv_string_configuration_old");
     document.getElementById("configuration-status").innerText = getText("changesLoading");
     fetchAndCalculate();
 }
@@ -1112,9 +1106,6 @@ function applyStringConfiguration() {
 function resetStringConfiguration() {
     anlagenKonfiguration = structuredClone(anlagenKonfigurationOriginal);
     localStorage.removeItem("pv_string_configuration");
-    localStorage.removeItem("pv_string_configuration_v2");
-    localStorage.removeItem("pv_string_configuration_legacy");
-    localStorage.removeItem("pv_string_configuration_old");
     renderStringDefinitions(anlagenKonfiguration);
     document.getElementById("configuration-status").innerText = getText("jsonRestored");
     fetchAndCalculate();
