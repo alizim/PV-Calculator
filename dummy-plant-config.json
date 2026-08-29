@@ -1,0 +1,73 @@
+{
+  "standort": "Musterstadt",
+  "beschreibung": "Photovoltaikanlage Musterhaus",
+  "koordinaten": {
+    "latitude": 52.5200,
+    "longitude": 13.4050
+  },
+  "verlustfaktor_standard": 0.85,
+  "system_steckbrief": {
+    "installierte_leistung_kwp": 8.0,
+    "module": {
+      "anzahl": 20,
+      "modell": "Muster-Modul 400 W",
+      "leistung_pro_modul_w": 400,
+      "optimierer": "Ja"
+    }
+  },
+  "string_aufteilung": [
+    {
+      "string_id": 1,
+      "name": "Dach Nord",
+      "gesamt_module_anzahl": 8,
+      "haupt_ausrichtung": "Nord",
+      "verlustfaktor": 0.8,
+      "modul_gruppen_nach_neigung": [
+        {
+          "anzahl_module": 5,
+          "neigung_grad": 35,
+          "azimut_grad": 180
+        },
+        {
+          "anzahl_module": 3,
+          "neigung_grad": 25,
+          "azimut_grad": 180
+        }
+      ]
+    },
+    {
+      "string_id": 2,
+      "name": "Dach Süd",
+      "gesamt_module_anzahl": 8,
+      "haupt_ausrichtung": "Süd",
+      "verlustfaktor": 0.85,
+      "modul_gruppen_nach_neigung": [
+        {
+          "anzahl_module": 5,
+          "neigung_grad": 35,
+          "azimut_grad": 0
+        },
+        {
+          "anzahl_module": 3,
+          "neigung_grad": 20,
+          "azimut_grad": 0
+        }
+      ]
+    },
+    {
+      "string_id": 3,
+      "name": "Fassade Süd",
+      "gesamt_module_anzahl": 4,
+      "haupt_ausrichtung": "Südwand",
+      "verlustfaktor": 0.7,
+      "modul_gruppen_nach_neigung": [
+        {
+          "anzahl_module": 4,
+          "neigung_grad": 90,
+          "azimut_grad": 0,
+          "verlustfaktor": 0.7
+        }
+      ]
+    }
+  ]
+}
