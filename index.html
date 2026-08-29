@@ -45,6 +45,35 @@
             line-height: 1.2;
             box-shadow: 0 2px 6px rgba(44, 62, 80, 0.15);
         }
+        .config-actions-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 8px 0 18px;
+        }
+        .config-actions-bar button,
+        .upload-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        .upload-button {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .upload-button input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
         .subtitle {
             text-align: center;
             color: #7f8c8d;
@@ -407,6 +436,14 @@
         <h1 id="app-title" data-default="☀️ Live PV-Ertragsprognose & Historie">☀️ Live PV-Ertragsprognose & Historie</h1>
         <button id="language-switch" type="button" onclick="toggleLanguage()" aria-label="Switch language">🌐 EN</button>
     </div>
+    <div class="config-actions-bar">
+        <button type="button" onclick="downloadTemplate()">Template herunterladen</button>
+        <button type="button" onclick="exportPlantConfiguration()">Anlage exportieren</button>
+        <label class="upload-button">
+            JSON hochladen
+            <input id="config-upload" type="file" accept=".json,application/json" />
+        </label>
+    </div>
     <div class="subtitle" id="anlage-subtitle" data-default="Echtzeitdaten via Open-Meteo API">Echtzeitdaten via Open-Meteo API</div>
     <button id="toggle-string-definitions" class="btn-toggle-definitions" type="button" style="display: none;" onclick="toggleStringDefinitions()">String-Konfiguration anzeigen</button>
     <div id="string-definitions" class="string-definitions" style="display: none;"></div>
@@ -471,6 +508,8 @@ const KONFIGURATIONS_URLEN = [
 const weekdayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const labelNames = { "-2": getText("labels.dayBeforeYesterday"), "-1": getText("labels.yesterday"), "0": getText("labels.today"), "1": getText("labels.tomorrow"), "2": getText("labels.dayAfterTomorrow") };
 
+document.getElementById("config-upload").addEventListener("change", handleConfigUpload);
+
 // Hilfsfunktion zur Formatierung von Date-Objekten zu YYYY-MM-DD
 function formatDate(date) {
     return date.toISOString().split('T')[0];
@@ -483,6 +522,58 @@ function getDateRange() {
     const bisDatum = new Date(heute);
     bisDatum.setDate(heute.getDate() + 2);
     return { vonDatum, bisDatum };
+}
+
+function downloadTemplate() {
+    const link = document.createElement("a");
+    link.href = "./dummy-plant-config.json";
+    link.download = "dummy-plant-config.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
+function exportPlantConfiguration() {
+    if (!anlagenKonfiguration) {
+        alert("Keine Anlage geladen, die exportiert werden kann.");
+        return;
+    }
+
+    const blob = new Blob([JSON.stringify(anlagenKonfiguration, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    const fileName = (anlagenKonfiguration.standort || "plant-config").toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-_]/g, "") || "plant-config";
+    link.href = URL.createObjectURL(blob);
+    link.download = `${fileName}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+}
+
+function handleConfigUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(reader.result);
+            if (!parsed || !parsed.koordinaten || !parsed.system_steckbrief || !Array.isArray(parsed.string_aufteilung)) {
+                throw new Error("Ungültige JSON-Struktur für eine PV-Anlage.");
+            }
+
+            anlagenKonfiguration = parsed;
+            anlagenKonfigurationOriginal = structuredClone(parsed);
+            localStorage.setItem("pv_uploaded_configuration", JSON.stringify(parsed));
+            event.target.value = "";
+            fetchAndCalculate();
+        } catch (error) {
+            alert(`Upload fehlgeschlagen: ${error.message}`);
+        }
+    };
+    reader.readAsText(file);
 }
 
 async function fetchTiltedIrradiance(config, vonDatum, bisDatum) {
@@ -510,6 +601,18 @@ async function fetchAndCalculate() {
     try {
         if (window.location.protocol === "file:") {
             throw new Error(getText("fileServerWarning"));
+        }
+
+        if (!anlagenKonfiguration) {
+            const uploadedConfig = localStorage.getItem("pv_uploaded_configuration");
+            if (uploadedConfig) {
+                try {
+                    anlagenKonfiguration = JSON.parse(uploadedConfig);
+                    anlagenKonfigurationOriginal = structuredClone(anlagenKonfiguration);
+                } catch (error) {
+                    localStorage.removeItem("pv_uploaded_configuration");
+                }
+            }
         }
 
         if (!anlagenKonfiguration) {
