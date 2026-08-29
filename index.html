@@ -956,9 +956,11 @@ async function fetchAndCalculate() {
 
         if (!data.daily) throw new Error(getText("apiDataError"));
 
-        const anlagenBeschreibung = anlagenKonfiguration.description ?? anlagenKonfiguration.beschreibung || "Photovoltaikanlage";
+        const anlagenBeschreibung = anlagenKonfiguration.description ?? anlagenKonfiguration.beschreibung ?? "Photovoltaikanlage";
+        const standort = anlagenKonfiguration.site ?? anlagenKonfiguration.standort ?? "Standort";
+        const installierteLeistung = anlagenKonfiguration.systemProfile?.installedPowerKwp ?? anlagenKonfiguration.system_steckbrief?.installierte_leistung_kwp ?? 0;
         document.getElementById("anlage-subtitle").innerText =
-            `${anlagenBeschreibung} | Standort: ${anlagenKonfiguration.site ?? anlagenKonfiguration.standort} | ${(anlagenKonfiguration.systemProfile?.installedPowerKwp ?? anlagenKonfiguration.system_steckbrief?.installierte_leistung_kwp ?? 0).toFixed(2)} kWp`;
+            `${anlagenBeschreibung} | Standort: ${standort} | ${installierteLeistung.toFixed(2)} kWp`;
         renderStringDefinitions(anlagenKonfiguration);
         renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
         renderArchive();
@@ -980,12 +982,14 @@ function renderStringDefinitions(config) {
     const definitions = document.getElementById("string-definitions");
     const strings = config.stringConfiguration ?? config.string_aufteilung ?? [];
     const entries = strings.map(string => {
-        const groups = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(gruppe =>
-            `${gruppe.moduleCount ?? gruppe.anzahl_module}x ${gruppe.tiltDegrees ?? gruppe.neigung_grad}° Neigung, ${gruppe.orientation ?? gruppe.ausrichtung || `Azimut ${gruppe.azimuthDegrees ?? gruppe.azimut_grad}°`}`
-        ).join("; ");
+        const groups = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(gruppe => {
+            const orientation = gruppe.orientation ?? gruppe.ausrichtung ?? `Azimut ${gruppe.azimuthDegrees ?? gruppe.azimut_grad ?? 0}°`;
+            return `${gruppe.moduleCount ?? gruppe.anzahl_module}x ${gruppe.tiltDegrees ?? gruppe.neigung_grad}° Neigung, ${orientation}`;
+        }).join("; ");
         const stringId = string.stringId ?? string.string_id;
         const name = string.name || `String ${stringId}`;
-        return `<div class="string-definition"><strong>String ${stringId}: ${name}</strong> - ${string.totalModuleCount ?? string.gesamt_module_anzahl} Module, ${string.mainOrientation ?? string.haupt_ausrichtung || "Ausrichtung nicht angegeben"}<br><small>${groups}</small></div>`;
+        const mainOrientation = string.mainOrientation ?? string.haupt_ausrichtung ?? "Ausrichtung nicht angegeben";
+        return `<div class="string-definition"><strong>String ${stringId}: ${name}</strong> - ${string.totalModuleCount ?? string.gesamt_module_anzahl} Module, ${mainOrientation}<br><small>${groups}</small></div>`;
     }).join("");
 
     const editor = strings.map(string => {
@@ -1350,7 +1354,7 @@ function openActualValuesModal(dateStr, cardIndex) {
             const inputGroup = document.createElement('div');
             inputGroup.className = 'input-group';
             inputGroup.innerHTML = `
-                <label>${string.name || `${getText("labels.string")} ${stringId}`} (${string.totalModuleCount ?? string.gesamt_module_anzahl} ${getText("labels.perModule")}, ${string.mainOrientation ?? string.haupt_ausrichtung}):</label>
+                <label>${string.name || `${getText("labels.string")} ${stringId}`} (${string.totalModuleCount ?? string.gesamt_module_anzahl} ${getText("labels.perModule")}, ${string.mainOrientation ?? string.haupt_ausrichtung ?? ""}):</label>
                 <input type="number" step="0.01" id="string-${stringId}-input" value="${currentValue}" placeholder="${getText("exampleValue")}" />
             `;
             stringInputsDiv.appendChild(inputGroup);
