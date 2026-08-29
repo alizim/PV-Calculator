@@ -495,6 +495,69 @@
         .archive-browser button { cursor: pointer; font-weight: bold; }
         .archive-browser .btn-recalculate { background: #27ae60; border-color: #27ae60; color: white; }
         .archive-cards { margin-top: 14px; }
+
+        .tab-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .tab-button {
+            border: 1px solid #dfe6e9;
+            background: #f8fafc;
+            color: #2d3748;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .tab-button.active {
+            background: #2c7be5;
+            border-color: #2c7be5;
+            color: white;
+        }
+        .annual-forecast-panel {
+            display: none;
+            margin-top: 12px;
+            background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+            border: 1px solid #dfe9f5;
+            border-radius: 10px;
+            padding: 18px;
+        }
+        .annual-forecast-panel.visible {
+            display: block;
+        }
+        .annual-summary {
+            display: grid;
+            gap: 18px;
+        }
+        .annual-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .annual-metric {
+            background: white;
+            border: 1px solid #e4edf7;
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+        .annual-metric span {
+            display: block;
+            font-size: 0.85rem;
+            color: #5b6b7a;
+            margin-bottom: 6px;
+        }
+        .annual-metric strong {
+            font-size: 1.4rem;
+            color: #1d3557;
+        }
+        .annual-note {
+            margin: 0;
+            color: #475569;
+            font-size: 0.95rem;
+        }
     </style>
 </head>
 <body>
@@ -522,7 +585,14 @@
     <div id="string-definitions" class="string-definitions" style="display: none;"></div>
 
     <div id="loading-text" class="loading" data-default="Lade Live-Wetterdaten und berechne Erträge...">Lade Live-Wetterdaten und berechne Erträge...</div>
+
+    <div class="tab-bar" role="tablist" aria-label="Dashboard views">
+        <button id="tab-daily" class="tab-button active" type="button" data-tab="daily" aria-selected="true">Tagesübersicht</button>
+        <button id="tab-annual" class="tab-button" type="button" data-tab="annual" aria-selected="false">Jahresprognose</button>
+    </div>
+
     <div class="grid" id="dashboard-grid" style="display: none;"></div>
+    <div id="annual-forecast-panel" class="annual-forecast-panel" aria-live="polite"></div>
 
     <section class="archive" aria-labelledby="archive-title">
         <div class="archive-header">
@@ -937,6 +1007,9 @@ async function fetchAndCalculate() {
             `${anlagenBeschreibung} | Standort: ${standort} | ${installierteLeistung.toFixed(2)} kWp`;
         renderStringDefinitions(anlagenKonfiguration);
         renderDashboard(data.daily, anlagenKonfiguration, irradianceProfiles);
+        window.currentAnnualForecastData = data.daily;
+        window.currentAnnualForecastProfiles = irradianceProfiles;
+        renderAnnualForecast(data.daily, anlagenKonfiguration, irradianceProfiles);
         renderArchive();
         applyUiTranslations();
     } catch (error) {
@@ -1057,6 +1130,167 @@ function toggleStringDefinitions() {
     button.innerText = isVisible ? getText("toggleStrings") : getText("toggleStringsHide");
 }
 
+function setActiveDashboardTab(tabName) {
+    const dailyTab = document.getElementById("tab-daily");
+    const annualTab = document.getElementById("tab-annual");
+    const dailyView = document.getElementById("dashboard-grid");
+    const annualView = document.getElementById("annual-forecast-panel");
+
+    const isAnnual = tabName === "annual";
+    if (dailyTab) {
+        dailyTab.classList.toggle("active", !isAnnual);
+        dailyTab.setAttribute("aria-selected", String(!isAnnual));
+    }
+    if (annualTab) {
+        annualTab.classList.toggle("active", isAnnual);
+        annualTab.setAttribute("aria-selected", String(isAnnual));
+    }
+    if (dailyView) dailyView.style.display = isAnnual ? "none" : "grid";
+    if (annualView) annualView.classList.toggle("visible", isAnnual);
+}
+
+function getHistoricalAnnualReference() {
+    const archive = loadArchive();
+    const yearlyTotals = {};
+    const currentYear = new Date().getFullYear();
+
+    Object.values(archive || {}).forEach(record => {
+        if (!record || !record.date || !record.forecast || !Number.isFinite(Number(record.forecast.total))) {
+            return;
+        }
+        const year = Number(record.date.slice(0, 4));
+        if (!Number.isFinite(year) || year < currentYear - 5) {
+            return;
+        }
+        yearlyTotals[year] = (yearlyTotals[year] || 0) + Number(record.forecast.total);
+    });
+
+    const years = Object.keys(yearlyTotals).sort((first, second) => Number(first) - Number(second));
+    if (!years.length) {
+        return { annualEstimate: 0, years: [], currentYearTotal: 0, source: "archive" };
+    }
+
+    const selectedYears = years.slice(Math.max(0, years.length - 5));
+    let totalWeight = 0;
+    let weightedTotal = 0;
+
+    selectedYears.forEach((year, index) => {
+        const weight = selectedYears.length - index;
+        totalWeight += weight;
+        weightedTotal += (yearlyTotals[year] || 0) * weight;
+    });
+
+    return {
+        annualEstimate: totalWeight > 0 ? weightedTotal / totalWeight : 0,
+        years: selectedYears,
+        currentYearTotal: yearlyTotals[currentYear] || 0,
+        source: "archive"
+    };
+}
+
+async function fetchHistoricalAnnualReference(config) {
+    const coordinates = normalizeCoordinates(config.coordinates ?? config.koordinaten ?? {});
+    const latitude = Number(coordinates.latitude);
+    const longitude = Number(coordinates.longitude);
+    const currentYear = new Date().getFullYear();
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return getHistoricalAnnualReference();
+    }
+
+    const years = [];
+    for (let year = currentYear - 4; year <= currentYear; year++) {
+        years.push(year);
+    }
+
+    const results = await Promise.all(years.map(async year => {
+        const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&daily=shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${year}-01-01&end_date=${year}-12-31`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return { year, total: 0 };
+            const data = await response.json();
+            const dailyValues = Array.isArray(data.daily?.shortwave_radiation_sum) ? data.daily.shortwave_radiation_sum : [];
+            const total = dailyValues.reduce((sum, value) => sum + Number(value || 0), 0);
+            return { year, total: Number.isFinite(total) ? total : 0 };
+        } catch (error) {
+            return { year, total: 0 };
+        }
+    }));
+
+    const yearlyTotals = {};
+    results.forEach(({ year, total }) => {
+        if (total > 0) yearlyTotals[year] = total;
+    });
+
+    if (!Object.keys(yearlyTotals).length) {
+        return getHistoricalAnnualReference();
+    }
+
+    const sortedYears = Object.keys(yearlyTotals).sort((first, second) => Number(first) - Number(second));
+    const selectedYears = sortedYears.slice(Math.max(0, sortedYears.length - 5));
+    let totalWeight = 0;
+    let weightedTotal = 0;
+
+    selectedYears.forEach((year, index) => {
+        const weight = selectedYears.length - index;
+        totalWeight += weight;
+        weightedTotal += (yearlyTotals[year] || 0) * weight;
+    });
+
+    const annualEstimate = totalWeight > 0 ? weightedTotal / totalWeight : 0;
+    return {
+        annualEstimate,
+        years: selectedYears,
+        currentYearTotal: yearlyTotals[currentYear] || 0,
+        source: "open-meteo"
+    };
+}
+
+async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
+    const panel = document.getElementById("annual-forecast-panel");
+    if (!panel) return;
+
+    const visibleDays = Array.isArray(dailyData?.time) ? dailyData.time.length : 0;
+    let totalForecast = 0;
+
+    for (let i = 0; i < visibleDays; i++) {
+        const date = dailyData.time[i];
+        const stringYields = calculateStringYields(date, config, irradianceProfiles);
+        totalForecast += stringYields.reduce((sum, string) => sum + string.ertrag, 0);
+    }
+
+    const avgPerDay = visibleDays > 0 ? totalForecast / visibleDays : 0;
+    const currentProjection = avgPerDay * 365;
+    const historicalReference = await fetchHistoricalAnnualReference(config);
+    const historicalAverage = historicalReference.annualEstimate || 0;
+    const annualEstimate = historicalReference.years.length ? (currentProjection * 0.6) + (historicalAverage * 0.4) : currentProjection;
+
+    panel.innerHTML = `
+        <div class="annual-summary">
+            <h3>${getText("annualForecastTitle")}</h3>
+            <div class="annual-metrics">
+                <div class="annual-metric">
+                    <span>${getText("annualEstimate")}</span>
+                    <strong>${annualEstimate.toFixed(0)} kWh</strong>
+                </div>
+                <div class="annual-metric">
+                    <span>${getText("historicalAverage")}</span>
+                    <strong>${historicalAverage.toFixed(0)} kWh</strong>
+                </div>
+                <div class="annual-metric">
+                    <span>${getText("dailyAverage")}</span>
+                    <strong>${avgPerDay.toFixed(2)} kWh/Tag</strong>
+                </div>
+                <div class="annual-metric">
+                    <span>${getText("forecastDays")}</span>
+                    <strong>${visibleDays} ${getText("labels.archive")}</strong>
+                </div>
+            </div>
+            <p class="annual-note">${getText("annualEstimateNote")}</p>
+        </div>
+    `;
+}
+
 function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dashboard-grid", persistArchive = true) {
     const grid = document.getElementById(targetId);
     grid.innerHTML = "";
@@ -1165,6 +1399,12 @@ function saveArchiveRecord(dateStr, dailyData, index, stringYields, totalForecas
     };
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
 }
+
+document.addEventListener("click", function(event) {
+    const tabButton = event.target.closest(".tab-button");
+    if (!tabButton) return;
+    setActiveDashboardTab(tabButton.dataset.tab);
+});
 
 function renderArchive() {
     const archive = loadArchive();

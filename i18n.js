@@ -34,6 +34,14 @@ const I18N = {
     archiveDetailMissing: "noch kein Realwert",
     archiveRecalculate: "Prognose neu berechnen",
     archiveRecalculateBusy: "Berechne neu...",
+    annualForecastTitle: "Jahresprognose",
+    annualForecastTab: "Jahresprognose",
+    dailyForecastTab: "Tagesübersicht",
+    annualEstimate: "Geschätzte Jahresproduktion",
+    historicalAverage: "Historischer Mittelwert (5 Jahre)",
+    dailyAverage: "Durchschnitt pro Tag",
+    forecastDays: "Betrachtete Tage",
+    annualEstimateNote: "Die Jahresprognose kombiniert die aktuelle Tagesprognose mit dem gewichteten Mittel der letzten 5 Jahre historischer API-Daten.",
     realValuesTitle: "Realwerte eingeben",
     realValuesComparison: "📊 Realwerte & Vergleich:",
     dateLabel: "Datum:",
@@ -125,6 +133,14 @@ const I18N = {
     archiveDetailMissing: "no real value yet",
     archiveRecalculate: "Recalculate forecast",
     archiveRecalculateBusy: "Recalculating...",
+    annualForecastTitle: "Annual forecast",
+    annualForecastTab: "Annual forecast",
+    dailyForecastTab: "Daily overview",
+    annualEstimate: "Estimated annual yield",
+    historicalAverage: "Historical average (5 years)",
+    dailyAverage: "Average per day",
+    forecastDays: "Days considered",
+    annualEstimateNote: "The annual estimate combines the current daily forecast with the weighted average of the last 5 years of historical API data.",
     realValuesTitle: "Enter actual values",
     realValuesComparison: "📊 Actual values & comparison:",
     dateLabel: "Date:",
@@ -297,6 +313,16 @@ function applyUiTranslations() {
   if (languageSwitch) {
     languageSwitch.textContent = currentLocale === "de" ? "🌐 EN" : "🌐 DE";
     languageSwitch.setAttribute("aria-label", currentLocale === "de" ? "Switch to English" : "Wechsel zu Deutsch");
+  }
+
+  const dailyTab = document.getElementById("tab-daily");
+  if (dailyTab) dailyTab.textContent = getText("dailyForecastTab");
+
+  const annualTab = document.getElementById("tab-annual");
+  if (annualTab) annualTab.textContent = getText("annualForecastTab");
+
+  if (typeof renderAnnualForecast === "function" && window.currentAnnualForecastData && anlagenKonfiguration) {
+    renderAnnualForecast(window.currentAnnualForecastData, anlagenKonfiguration, window.currentAnnualForecastProfiles || new Map());
   }
 
   const settingsButton = document.getElementById("settings-button");
