@@ -183,7 +183,29 @@ const I18N = {
   }
 };
 
-let currentLocale = "de";
+const LOCALE_STORAGE_KEY = "pv-calculator-locale";
+
+function getStoredLocale() {
+  try {
+    const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (storedLocale && I18N[storedLocale]) {
+      return storedLocale;
+    }
+  } catch (error) {
+    // localStorage may be unavailable in some browser contexts
+  }
+  return "de";
+}
+
+let currentLocale = getStoredLocale();
+
+function persistLocale(locale) {
+  try {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  } catch (error) {
+    // ignore storage errors
+  }
+}
 
 function getText(key) {
   const segments = key.split(".");
@@ -203,6 +225,7 @@ function getText(key) {
 function setLanguage(locale) {
   if (!I18N[locale]) return;
   currentLocale = locale;
+  persistLocale(locale);
   document.documentElement.lang = locale;
   applyUiTranslations();
 }
