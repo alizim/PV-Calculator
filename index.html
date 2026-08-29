@@ -1336,10 +1336,11 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const annualEstimate = annualEstimateBase * remainingYearFraction;
 
     const expectedSoFar = annualEstimate * (dateProgressPercent / 100);
-    const realizedPercent = annualEstimate > 0 ? (realizedSoFar / annualEstimate) * 100 : 0;
-    const progressPercent = Math.min(100, realizedPercent);
-    const progressBarColor = progressPercent >= 100 ? "#27ae60" : progressPercent >= 80 ? "#f39c12" : "#e74c3c";
-    const progressText = progressPercent >= 100 ? getText("annualProgressAhead") : progressPercent >= 80 ? getText("annualProgressOnTrack") : getText("annualProgressBehind");
+    const progressRatio = expectedSoFar > 0 ? realizedSoFar / expectedSoFar : 0;
+    const progressPercent = Math.max(0, progressRatio * 100);
+    const progressBarWidth = Math.min(100, progressPercent);
+    const progressBarColor = progressRatio >= 1 ? "#27ae60" : progressRatio >= 0.8 ? "#f39c12" : "#e74c3c";
+    const progressText = progressRatio >= 1 ? getText("annualProgressAhead") : progressRatio >= 0.8 ? getText("annualProgressOnTrack") : getText("annualProgressBehind");
 
     panel.innerHTML = `
         <div class="annual-summary">
@@ -1369,7 +1370,7 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
                     <strong>${Math.round(progressPercent)}%</strong>
                 </div>
                 <div style="width: 100%; height: 12px; background: rgba(148, 163, 184, 0.25); border-radius: 999px; overflow: hidden;">
-                    <div style="width: ${Math.min(100, progressPercent)}%; height: 100%; background: ${progressBarColor}; border-radius: 999px; transition: width 0.25s ease;"></div>
+                    <div style="width: ${progressBarWidth}%; height: 100%; background: ${progressBarColor}; border-radius: 999px; transition: width 0.25s ease;"></div>
                 </div>
                 <div style="margin-top: 8px; font-size: 0.86em; color: #475569; line-height: 1.7;">
                     <div><strong>${getText("annualStart")}</strong>: ${firstProductionDate.toLocaleDateString('de-DE')}</div>
