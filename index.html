@@ -1268,17 +1268,25 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
 
     const visibleDays = Array.isArray(dailyData?.time) ? dailyData.time.length : 0;
     let totalForecast = 0;
+    let totalCurrentIrradiation = 0;
 
     for (let i = 0; i < visibleDays; i++) {
         const date = dailyData.time[i];
         const stringYields = calculateStringYields(date, config, irradianceProfiles);
-        totalForecast += stringYields.reduce((sum, string) => sum + string.ertrag, 0);
+        const currentDayYield = stringYields.reduce((sum, string) => sum + string.ertrag, 0);
+        totalForecast += currentDayYield;
+        totalCurrentIrradiation += Number(dailyData.shortwave_radiation_sum?.[i] ?? 0);
     }
 
     const avgPerDay = visibleDays > 0 ? totalForecast / visibleDays : 0;
     const currentProjection = avgPerDay * 365;
+    const currentIrradiationKWhPerM2 = totalCurrentIrradiation > 0 ? totalCurrentIrradiation / 1000 : 0;
+    const currentYieldPerIrradiation = currentIrradiationKWhPerM2 > 0 ? totalForecast / currentIrradiationKWhPerM2 : 0;
     const historicalReference = await fetchHistoricalAnnualReference(config);
-    const historicalAverage = historicalReference.annualEstimate || 0;
+    const historicalIrradiation = Number(historicalReference.annualEstimate || 0) / 1000;
+    const historicalAverage = currentYieldPerIrradiation > 0 && historicalIrradiation > 0
+        ? historicalIrradiation * currentYieldPerIrradiation
+        : (historicalReference.annualEstimate || 0);
     const annualEstimate = historicalAverage > 0 ? historicalAverage : currentProjection;
 
     panel.innerHTML = `
