@@ -16,14 +16,16 @@ A lightweight PV yield dashboard for visualizing live forecast production, annua
 
 ## Quick start
 
+Open the project page here:
+
+- https://alizim.github.io/PV-Calculator/
+
+For local development, run:
+
 ```bash
 cd /workspaces/PV-Calculator
 python3 -m http.server 8000
 ```
-
-Then open:
-
-- Project page: https://alizim.github.io/PV-Calculator/
 
 ## Files
 
