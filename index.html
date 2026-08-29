@@ -732,19 +732,66 @@ function getLegacyStorageKeys() {
     return [...new Set([...legacyPatternKeys.filter(key => localStorage.getItem(key) !== null), ...legacyActualKeys])];
 }
 
+function getMigrationStateSummary() {
+    const canonicalMappings = [
+        ["pv_uploaded_configuration", ["pv_uploaded_configuration_v2", "pv_uploaded_configuration_legacy", "pv_uploaded_configuration_old"]],
+        ["pv_string_configuration", ["pv_string_configuration_v2", "pv_string_configuration_legacy", "pv_string_configuration_old"]],
+        ["pv_historical_archive", ["pv_historical_archive_v2", "pv_historical_archive_legacy", "pv_historical_archive_old"]]
+    ];
+
+    const groups = canonicalMappings.map(([canonicalKey, legacyKeys]) => {
+        const legacyValues = legacyKeys.filter(key => localStorage.getItem(key) !== null);
+        const hasCanonical = localStorage.getItem(canonicalKey) !== null;
+        return {
+            canonicalKey,
+            legacyKeys,
+            legacyValues,
+            hasCanonical,
+            legacyCount: legacyValues.length
+        };
+    });
+
+    const legacyActualKeys = Object.keys(localStorage).filter(key => key.startsWith("pv_actual_") && !key.startsWith("pv_actual_values_"));
+    const actualValues = legacyActualKeys.map(key => ({
+        legacyKey: key,
+        canonicalKey: `pv_actual_values_${key.replace(/^pv_actual_/, "")}`,
+        hasCanonical: localStorage.getItem(`pv_actual_values_${key.replace(/^pv_actual_/, "")}`) !== null
+    }));
+
+    const allGroupsMigrated = groups.every(group => group.legacyCount === 0 || group.hasCanonical) && actualValues.every(value => !value.legacyKey || value.hasCanonical);
+    return { groups, actualValues, allGroupsMigrated };
+}
+
 function updateMigrationNotice() {
     const migrationStatus = document.getElementById("migration-status");
     if (!migrationStatus) return;
 
+    const summary = getMigrationStateSummary();
     const legacyKeys = getLegacyStorageKeys();
+
     if (legacyKeys.length === 0) {
         migrationStatus.style.display = "none";
         migrationStatus.textContent = "";
         return;
     }
 
+    const missingCanonicalKeys = summary.groups
+        .filter(group => group.legacyCount > 0 && !group.hasCanonical)
+        .map(group => `${group.canonicalKey} (legacy: ${group.legacyValues.join(", ")})`);
+
+    const missingActualKeys = summary.actualValues
+        .filter(value => value.legacyKey && !value.hasCanonical)
+        .map(value => `${value.legacyKey} -> ${value.canonicalKey}`);
+
     migrationStatus.style.display = "block";
-    migrationStatus.textContent = `Legacy localStorage data detected (${legacyKeys.join(", ")}). Keep the migration compatibility code until these keys are gone. Remove it only after the old entries are cleared.`;
+
+    if (summary.allGroupsMigrated) {
+        migrationStatus.textContent = `Legacy migration detected, but every legacy entry already has a canonical replacement. You can remove the migration compatibility code after the old storage keys are cleared.`;
+        return;
+    }
+
+    const missingList = [...missingCanonicalKeys, ...missingActualKeys];
+    migrationStatus.textContent = `Legacy localStorage data still needs migration. Missing canonical entries: ${missingList.length ? missingList.join("; ") : "none"}. Keep the migration compatibility code until all legacy keys are cleared.`;
 }
 
 function migrateLegacyStorageKeys() {
