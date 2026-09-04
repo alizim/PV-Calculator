@@ -47,7 +47,8 @@ function calculateStringYields(date, config, irradianceProfiles) {
     return stringList.map(string => {
         const stringId = string.stringId ?? string.string_id;
         const stringVerlustfaktor = string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85;
-        const calibrationFactor = Number(config.calibrationFactors?.[stringId] ?? 1);
+        const configuredCalibrationFactor = Number(config.calibrationFactors?.[stringId]);
+        const calibrationFactor = Number.isFinite(configuredCalibrationFactor) && configuredCalibrationFactor > 0 ? configuredCalibrationFactor : 1;
 
         const gruppen = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(gruppe => {
             const leistung_kWp = (gruppe.moduleCount ?? gruppe.anzahl_module ?? 0) * modulLeistung_kWp;

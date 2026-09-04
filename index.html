@@ -638,8 +638,8 @@
     </div>
 </div>
 
-<script src="i18n.js"></script>
-<script src="calc.js"></script>
+<script src="i18n.js?v=3"></script>
+<script src="calc.js?v=3"></script>
 <script>
 let anlagenKonfiguration;
 let anlagenKonfigurationOriginal;
@@ -1456,8 +1456,10 @@ function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dash
         if (persistArchive) {
             saveArchiveRecord(dailyData.time[i], dailyData, i, stringErtraege, gesamtErtrag, irradianceProfiles);
         }
-        const stringZeilen = stringErtraege.map(string =>
-            `<div class="result-line"><span>${getText("labels.string")} ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh <small>(${getText("labels.calibrationFactor")} ${Number(string.calibrationFactor).toFixed(2)}x)</small></span></div>`
+        const stringZeilen = stringErtraege.map(string => {
+            const calibrationFactor = Number.isFinite(Number(string.calibrationFactor)) ? Number(string.calibrationFactor) : 1;
+            return `<div class="result-line"><span>${getText("labels.string")} ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh <small>(${getText("labels.calibrationFactor")} ${calibrationFactor.toFixed(2)}x)</small></span></div>`;
+        }
         ).join("");
 
         const isTodayClass = dayOffset === 0 ? 'today' : '';
