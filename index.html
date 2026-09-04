@@ -1262,6 +1262,48 @@ async function fetchHistoricalAnnualReference(config) {
     };
 }
 
+async function fetchHistoricalSeasonalFraction(config, startDate, endDate) {
+    const coordinates = normalizeCoordinates(config.coordinates ?? config.koordinaten ?? {});
+    const latitude = Number(coordinates.latitude);
+    const longitude = Number(coordinates.longitude);
+    const currentYear = endDate.getFullYear();
+    const startMonth = startDate.getMonth();
+    const startDay = startDate.getDate();
+    const endMonth = endDate.getMonth();
+    const endDay = endDate.getDate();
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || startDate > endDate) {
+        return null;
+    }
+
+    const results = await Promise.all(Array.from({ length: 5 }, async (_, index) => {
+        const year = currentYear - index - 1;
+        const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&daily=shortwave_radiation_sum&timezone=Europe%2FBerlin&start_date=${year}-01-01&end_date=${year}-12-31`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return null;
+            const data = await response.json();
+            const values = Array.isArray(data.daily?.shortwave_radiation_sum) ? data.daily.shortwave_radiation_sum : [];
+            const startIndex = Math.floor((Date.UTC(year, startMonth, startDay) - Date.UTC(year, 0, 1)) / 86400000);
+            const endIndex = Math.floor((Date.UTC(year, endMonth, endDay) - Date.UTC(year, 0, 1)) / 86400000);
+            const activeYearStartIndex = Math.max(0, Math.min(values.length - 1, startIndex));
+            const activeYearEndIndex = Math.max(activeYearStartIndex, Math.min(values.length - 1, endIndex));
+            const activeYearTotal = values.slice(activeYearStartIndex).reduce((sum, value) => sum + Number(value || 0), 0);
+            const activePeriodTotal = values.slice(activeYearStartIndex, activeYearEndIndex + 1).reduce((sum, value) => sum + Number(value || 0), 0);
+            return { activeYearTotal, activePeriodTotal };
+        } catch (error) {
+            return null;
+        }
+    }));
+
+    const validResults = results.filter(result => result && result.activeYearTotal > 0);
+    if (!validResults.length) return null;
+
+    const activeYearTotal = validResults.reduce((sum, result) => sum + result.activeYearTotal, 0);
+    const activePeriodTotal = validResults.reduce((sum, result) => sum + result.activePeriodTotal, 0);
+    return activeYearTotal > 0 ? activePeriodTotal / activeYearTotal : null;
+}
+
 async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const panel = document.getElementById("annual-forecast-panel");
     if (!panel) return;
@@ -1323,7 +1365,7 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
 
     let realizedSoFar = 0;
     Object.values(archive || {}).forEach(record => {
-        if (!record || !record.date || Number(record.date.slice(0, 4)) !== currentYear || !record.actual) return;
+        if (!record || !record.date || Number(record.date.slice(0, 4)) !== currentYear || record.date > formatDate(today) || !record.actual) return;
         const actualTotal = Object.values(record.actual).reduce((sum, value) => sum + Number(value || 0), 0);
         if (Number.isFinite(actualTotal)) {
             realizedSoFar += actualTotal;
@@ -1335,7 +1377,11 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const remainingYearFraction = Math.max(0, Math.min(1, (totalDaysOfYearForEstimate - daysBeforeFirstProduction) / totalDaysOfYearForEstimate));
     const annualEstimate = annualEstimateBase * remainingYearFraction;
 
-    const expectedSoFar = annualEstimate * (dateProgressPercent / 100);
+    const historicalSeasonalFraction = await fetchHistoricalSeasonalFraction(config, firstProductionDate, today);
+    const expectedProgressFraction = historicalSeasonalFraction === null
+        ? dateProgressPercent / 100
+        : Math.max(0, Math.min(1, historicalSeasonalFraction));
+    const expectedSoFar = annualEstimate * expectedProgressFraction;
     const progressRatio = expectedSoFar > 0 ? realizedSoFar / expectedSoFar : 0;
     const annualProgressRatio = annualEstimate > 0 ? realizedSoFar / annualEstimate : 0;
     const progressPercent = Math.min(100, Math.max(0, annualProgressRatio * 100));
