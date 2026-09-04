@@ -572,6 +572,7 @@
                 <div id="settings-menu" class="settings-menu" role="menu" aria-label="Settings menu">
                     <button id="download-template-btn" class="settings-menu-item" type="button" onclick="downloadTemplate()">Download template</button>
                     <button id="export-plant-btn" class="settings-menu-item" type="button" onclick="exportPlantConfiguration()">Export plant</button>
+                    <button id="export-archive-btn" class="settings-menu-item" type="button" onclick="exportArchive()">Export archive</button>
                     <label id="upload-json-btn" class="settings-menu-item upload-menu-item" role="menuitem">
                         <span>Upload JSON</span>
                         <input id="config-upload" type="file" accept=".json,application/json" />
@@ -598,7 +599,6 @@
         <div class="archive-header">
             <h2 id="archive-title" data-default="Historisches Archiv">Historisches Archiv</h2>
             <div class="archive-actions">
-                <button class="btn-archive-export" type="button" onclick="exportArchive()">Archiv exportieren</button>
                 <button class="btn-archive-clear" type="button" onclick="clearArchive()">Archiv löschen</button>
             </div>
         </div>
@@ -1687,7 +1687,14 @@ function showArchiveDetail(date) {
 }
 
 function exportArchive() {
-    const blob = new Blob([JSON.stringify(loadArchive(), null, 2)], { type: "application/json" });
+    const exportData = {
+        exportVersion: 1,
+        exportedAt: new Date().toISOString(),
+        plantConfiguration: anlagenKonfiguration ? JSON.parse(serializePlantConfiguration(anlagenKonfiguration)) : null,
+        calibrationFactors: anlagenKonfiguration?.calibrationFactors ?? {},
+        archive: loadArchive()
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `pv-archiv-${formatDate(new Date())}.json`;

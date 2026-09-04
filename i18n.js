@@ -346,6 +346,9 @@ function applyUiTranslations() {
   const exportPlantButton = document.getElementById("export-plant-btn");
   if (exportPlantButton) exportPlantButton.textContent = getText("exportPlant");
 
+  const exportArchiveButton = document.getElementById("export-archive-btn");
+  if (exportArchiveButton) exportArchiveButton.textContent = getText("archiveExport");
+
   const uploadJsonButton = document.getElementById("upload-json-btn");
   if (uploadJsonButton) {
     const uploadLabel = uploadJsonButton.querySelector("span");
