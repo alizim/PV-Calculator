@@ -70,6 +70,7 @@ function calculateStringYields(date, config, irradianceProfiles) {
             name: string.name || `String ${string.stringId ?? string.string_id}`,
             ausrichtung: string.mainOrientation ?? string.haupt_ausrichtung,
             module: string.totalModuleCount ?? string.gesamt_module_anzahl,
+            calibrationFactor,
             neigungen: gruppen.map(gruppe =>
                 `${gruppe.moduleCount ?? gruppe.anzahl_module}x ${gruppe.tiltDegrees ?? gruppe.neigung_grad}° / ${gruppe.winkel.toFixed(1)}° Einfall`
             ).join(" + "),

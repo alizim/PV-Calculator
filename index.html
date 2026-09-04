@@ -1457,7 +1457,7 @@ function renderDashboard(dailyData, config, irradianceProfiles, targetId = "dash
             saveArchiveRecord(dailyData.time[i], dailyData, i, stringErtraege, gesamtErtrag, irradianceProfiles);
         }
         const stringZeilen = stringErtraege.map(string =>
-            `<div class="result-line"><span>${getText("labels.string")} ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh</span></div>`
+            `<div class="result-line"><span>${getText("labels.string")} ${string.id}:</span> <span>${string.ertrag.toFixed(2)} kWh <small>(${getText("labels.calibrationFactor")} ${Number(string.calibrationFactor).toFixed(2)}x)</small></span></div>`
         ).join("");
 
         const isTodayClass = dayOffset === 0 ? 'today' : '';
