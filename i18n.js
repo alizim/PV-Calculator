@@ -13,7 +13,7 @@ const I18N = {
     configLoadError: "Anlagenkonfiguration konnte nicht geladen werden: ",
     fileServerWarning: "Bitte index.html über einen Webserver öffnen, damit anlage.json geladen werden kann",
     invalidNumber: "Bitte nur gültige Zahlen in der String-Konfiguration verwenden.",
-    invalidLossFactor: "Der Verlustfaktor muss zwischen 0 und 1 liegen.",
+    invalidLossFactor: "Der Anlagenfaktor muss zwischen 0 und 1 liegen.",
     changesLoading: "Änderungen werden geladen...",
     jsonRestored: "JSON-Werte wiederhergestellt.",
     stringConfigTitle: "String-Konfiguration",
@@ -85,7 +85,7 @@ const I18N = {
       perModule: "Module",
       azimuth: "Azimut",
       tilt: "Neigung",
-      performanceFactor: "Ertragsfaktor",
+      performanceFactor: "Anlagenfaktor (0–1)",
       noOrientation: "Ausrichtung nicht angegeben",
       moduleGroup: "Modulgruppe",
       configurationStatus: "Änderungen werden geladen...",
@@ -119,7 +119,7 @@ const I18N = {
     configLoadError: "Could not load plant configuration: ",
     fileServerWarning: "Please open index.html through a web server so anlage.json can be loaded",
     invalidNumber: "Please use only valid numbers in the string configuration.",
-    invalidLossFactor: "The loss factor must be between 0 and 1.",
+    invalidLossFactor: "The system factor must be between 0 and 1.",
     changesLoading: "Applying changes...",
     jsonRestored: "JSON values restored.",
     stringConfigTitle: "String configuration",
@@ -191,7 +191,7 @@ const I18N = {
       perModule: "modules",
       azimuth: "Azimuth",
       tilt: "Tilt",
-      performanceFactor: "Yield factor",
+      performanceFactor: "System factor (0–1)",
       noOrientation: "Orientation not specified",
       moduleGroup: "Module group",
       configurationStatus: "Applying changes...",
@@ -239,17 +239,10 @@ function persistLocale(locale) {
 
 function getText(key) {
   const segments = key.split(".");
-  const localeData = I18N[currentLocale] || I18N.de;
-  let value = localeData;
-  for (const segment of segments) {
-    if (value && typeof value === "object") {
-      value = value[segment];
-    } else {
-      value = undefined;
-      break;
-    }
-  }
-  return value ?? I18N.de[key] ?? key;
+    const resolve = localeData => segments.reduce((value, segment) => {
+      return value && typeof value === "object" ? value[segment] : undefined;
+    }, localeData);
+    return resolve(I18N[currentLocale]) ?? resolve(I18N.de) ?? key;
 }
 
 function setLanguage(locale) {
