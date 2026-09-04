@@ -45,7 +45,9 @@ function calculateStringYields(date, config, irradianceProfiles) {
     const stringList = config.stringConfiguration ?? config.string_aufteilung ?? [];
 
     return stringList.map(string => {
+        const stringId = string.stringId ?? string.string_id;
         const stringVerlustfaktor = string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85;
+        const calibrationFactor = Number(config.calibrationFactors?.[stringId] ?? 1);
 
         const gruppen = (string.moduleGroupsByTilt ?? string.modul_gruppen_nach_neigung ?? []).map(gruppe => {
             const leistung_kWp = (gruppe.moduleCount ?? gruppe.anzahl_module ?? 0) * modulLeistung_kWp;
@@ -59,12 +61,12 @@ function calculateStringYields(date, config, irradianceProfiles) {
                 ...gruppe,
                 winkel: getSolarIncidenceAngle(dateObject, gruppe, config.coordinates?.latitude ?? config.koordinaten?.latitude),
                 ertrag: irradiance * leistung_kWp *
-                    (gruppe.lossFactor ?? gruppe.verlustfaktor ?? stringVerlustfaktor)
+                    (gruppe.lossFactor ?? gruppe.verlustfaktor ?? stringVerlustfaktor) * calibrationFactor
             };
         });
 
         return {
-            id: string.stringId ?? string.string_id,
+            id: stringId,
             name: string.name || `String ${string.stringId ?? string.string_id}`,
             ausrichtung: string.mainOrientation ?? string.haupt_ausrichtung,
             module: string.totalModuleCount ?? string.gesamt_module_anzahl,

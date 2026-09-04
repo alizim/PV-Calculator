@@ -980,6 +980,8 @@ async function fetchAndCalculate() {
             }
         }
 
+            anlagenKonfiguration.calibrationFactors = getStringCalibrationFactors();
+
         const { vonDatum, bisDatum } = getDateRange();
 
         // Open-Meteo API URL für Historie + Vorhersage kombiniert
@@ -1044,7 +1046,7 @@ function renderStringDefinitions(config) {
                 </label>
                 <label>${getText("labels.azimuth")} (°)<input type="number" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="azimuthDegrees" value="${gruppe.azimuthDegrees ?? gruppe.azimut_grad}"></label>
                 <label>${getText("labels.tilt")} (°)<input type="number" min="0" max="90" step="0.1" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="tiltDegrees" value="${gruppe.tiltDegrees ?? gruppe.neigung_grad}"></label>
-                <label>${getText("labels.loss")}<input type="number" min="0" max="1" step="0.01" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="lossFactor" value="${gruppe.lossFactor ?? gruppe.verlustfaktor ?? string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard}"></label>
+                <label>${getText("labels.performanceFactor")}<input type="number" min="0" max="1" step="0.01" data-string-id="${stringId}" data-group-index="${groupIndex}" data-field="lossFactor" value="${gruppe.lossFactor ?? gruppe.verlustfaktor ?? string.lossFactor ?? string.verlustfaktor ?? config.defaultLossFactor ?? config.verlustfaktor_standard}"></label>
             </div>`).join("");
         return `<section class="configuration-string"><h3>${getText("labels.string")} ${stringId}: ${string.name || `${getText("labels.string")} ${stringId}`}</h3>${groups}</section>`;
     }).join("");
@@ -1144,7 +1146,7 @@ function getArchiveDayCount() {
     let archiveDayCount = 0;
 
     Object.values(archive || {}).forEach(record => {
-        if (!record || !record.date || !record.forecast || !Number.isFinite(Number(record.forecast.total))) {
+        if (!record || !record.date || !record.forecast || !Number.isFinite(Number(record.forecast.baseTotal ?? record.forecast.total))) {
             return;
         }
         archiveDayCount += 1;
@@ -1170,7 +1172,7 @@ function getHistoricalAnnualReference() {
         if (!Number.isFinite(year) || year < currentYear - 5) {
             return;
         }
-        yearlyTotals[year] = (yearlyTotals[year] || 0) + Number(record.forecast.total);
+        yearlyTotals[year] = (yearlyTotals[year] || 0) + Number(record.forecast.baseTotal ?? record.forecast.total);
     });
 
     const years = Object.keys(yearlyTotals).sort((first, second) => Number(first) - Number(second));
@@ -1513,6 +1515,31 @@ function loadArchive() {
     }
 }
 
+function getStringCalibrationFactors() {
+    const archive = loadArchive();
+    const totals = {};
+
+    Object.values(archive || {}).forEach(record => {
+        if (!record?.actual || !record.forecast?.strings) return;
+        Object.entries(record.actual).forEach(([stringKey, actualValue]) => {
+            const actual = Number(actualValue);
+            const forecast = Number(record.forecast.baseStrings?.[stringKey] ?? record.forecast.strings[stringKey]);
+            if (!Number.isFinite(actual) || !Number.isFinite(forecast) || actual < 0 || forecast <= 0) return;
+            if (!totals[stringKey]) totals[stringKey] = { actual: 0, forecast: 0, days: 0 };
+            totals[stringKey].actual += actual;
+            totals[stringKey].forecast += forecast;
+            totals[stringKey].days += 1;
+        });
+    });
+
+    return Object.fromEntries(Object.entries(totals).map(([stringKey, values]) => {
+        const ratio = values.actual / values.forecast;
+        const confidence = Math.min(0.6, values.days / 20);
+        const correction = 1 + (ratio - 1) * confidence;
+        return [stringKey.replace("string_", ""), Math.max(0.75, Math.min(1.25, correction))];
+    }));
+}
+
 function saveArchiveRecord(dateStr, dailyData, index, stringYields, totalForecast, irradianceProfiles) {
     const archive = loadArchive();
     const date = dateStr.slice(0, 10);
@@ -1533,7 +1560,15 @@ function saveArchiveRecord(dateStr, dailyData, index, stringYields, totalForecas
         horizontalRadiation: dailyData.shortwave_radiation_sum[index],
         forecast: {
             total: totalForecast,
-            strings: Object.fromEntries(stringYields.map(string => [`string_${string.id}`, string.ertrag]))
+            baseTotal: Object.values(stringYields).reduce((sum, string) => {
+                const calibrationFactor = Number(anlagenKonfiguration.calibrationFactors?.[string.id] ?? 1);
+                return sum + (calibrationFactor > 0 ? string.ertrag / calibrationFactor : string.ertrag);
+            }, 0),
+            strings: Object.fromEntries(stringYields.map(string => [`string_${string.id}`, string.ertrag])),
+            baseStrings: Object.fromEntries(stringYields.map(string => {
+                const calibrationFactor = Number(anlagenKonfiguration.calibrationFactors?.[string.id] ?? 1);
+                return [`string_${string.id}`, calibrationFactor > 0 ? string.ertrag / calibrationFactor : string.ertrag];
+            }))
         },
         tiltedIrradiance: irradiance,
         actual: loadActualValues(date) || archive[date]?.actual || null
