@@ -1377,12 +1377,18 @@ async function renderAnnualForecast(dailyData, config, irradianceProfiles) {
     const totalDaysOfYearForEstimate = Math.max(1, Math.floor((new Date(currentYear, 11, 31, 12) - new Date(currentYear, 0, 1, 12)) / 86400000) + 1);
     const daysBeforeFirstProduction = Math.max(0, Math.floor((firstProductionDate - new Date(currentYear, 0, 1, 12)) / 86400000));
     const remainingYearFraction = Math.max(0, Math.min(1, (totalDaysOfYearForEstimate - daysBeforeFirstProduction) / totalDaysOfYearForEstimate));
-    const annualEstimate = annualEstimateBase * remainingYearFraction;
 
     const historicalSeasonalFraction = await fetchHistoricalSeasonalFraction(config, firstProductionDate, today);
     const expectedProgressFraction = historicalSeasonalFraction === null
         ? dateProgressPercent / 100
         : Math.max(0, Math.min(1, historicalSeasonalFraction));
+    const baselineAnnualEstimate = annualEstimateBase * remainingYearFraction;
+    const seasonalAnnualEstimate = realizedSoFar > 0 && expectedProgressFraction > 0
+        ? realizedSoFar / expectedProgressFraction
+        : 0;
+    const annualEstimate = seasonalAnnualEstimate > 0
+        ? seasonalAnnualEstimate
+        : baselineAnnualEstimate;
     const expectedSoFar = annualEstimate * expectedProgressFraction;
     const progressRatio = expectedSoFar > 0 ? realizedSoFar / expectedSoFar : 0;
     const annualProgressRatio = annualEstimate > 0 ? realizedSoFar / annualEstimate : 0;
