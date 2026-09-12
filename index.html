@@ -709,7 +709,8 @@ function normalizeModuleGroup(group, fallbackLossFactor) {
         tiltDegrees: group.tiltDegrees ?? group.neigung_grad ?? 0,
         azimuthDegrees: group.azimuthDegrees ?? group.azimut_grad ?? 0,
         orientation: group.orientation ?? group.ausrichtung ?? "",
-        lossFactor: group.lossFactor ?? group.verlustfaktor ?? fallbackLossFactor ?? 0.85
+        lossFactor: group.lossFactor ?? group.verlustfaktor ?? fallbackLossFactor ?? 0.85,
+        shadingReference: group.shadingReference ?? group.verschattungsreferenz ?? ""
     };
 
     applyLegacyAliases(normalized, "moduleCount", "anzahl_module");
@@ -717,6 +718,7 @@ function normalizeModuleGroup(group, fallbackLossFactor) {
     applyLegacyAliases(normalized, "azimuthDegrees", "azimut_grad");
     applyLegacyAliases(normalized, "orientation", "ausrichtung");
     applyLegacyAliases(normalized, "lossFactor", "verlustfaktor");
+    applyLegacyAliases(normalized, "shadingReference", "verschattungsreferenz");
     return normalized;
 }
 
@@ -757,7 +759,9 @@ function normalizePlantConfiguration(config) {
                 optimizer: moduleSource.optimizer ?? moduleSource.optimierer ?? ""
             }
         },
-        stringConfiguration: (config.stringConfiguration ?? config.string_aufteilung ?? []).map((string, index) => normalizeStringConfiguration(string, index, config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85))
+        stringConfiguration: (config.stringConfiguration ?? config.string_aufteilung ?? []).map((string, index) => normalizeStringConfiguration(string, index, config.defaultLossFactor ?? config.verlustfaktor_standard ?? 0.85)),
+        shadingRules: config.shadingRules ?? config.verschattungsregeln ?? {},
+        shadingTimeWindows: config.shadingTimeWindows ?? config.verschattungszeitfenster ?? {}
     };
 
     applyLegacyAliases(normalized, "site", "standort");
@@ -786,7 +790,9 @@ function serializePlantConfiguration(config) {
         coordinates: normalized.coordinates,
         defaultLossFactor: normalized.defaultLossFactor,
         systemProfile: normalized.systemProfile,
-        stringConfiguration: normalized.stringConfiguration
+        stringConfiguration: normalized.stringConfiguration,
+        shadingRules: normalized.shadingRules,
+        shadingTimeWindows: normalized.shadingTimeWindows
     }, null, 2);
 }
 
@@ -954,7 +960,8 @@ async function fetchAndCalculate() {
                                 tiltDegrees: group.tiltDegrees,
                                 azimuthDegrees: group.azimuthDegrees,
                                 orientation: group.orientation,
-                                lossFactor: group.lossFactor
+                                lossFactor: group.lossFactor,
+                                shadingReference: group.shadingReference
                             }))
                         }))));
                     }

@@ -1,6 +1,6 @@
 {
   "site": "Norderstedt",
-  "description": "Photovoltaic system with roof and facade modules",
+  "description": "Photovoltaic system with roof and facade modules with integrated shading model",
   "coordinates": {
     "latitude": 53.7065,
     "longitude": 10.0101
@@ -26,12 +26,16 @@
         {
           "moduleCount": 10,
           "tiltDegrees": 49,
-          "azimuthDegrees": 163.5
+          "azimuthDegrees": 163.5,
+          "lossFactor": 0.39,
+          "shadingReference": "self_shading_winter"
         },
         {
           "moduleCount": 3,
           "tiltDegrees": 24,
-          "azimuthDegrees": 163.5
+          "azimuthDegrees": 163.5,
+          "lossFactor": 0.39,
+          "shadingReference": "self_shading_winter"
         }
       ]
     },
@@ -45,12 +49,16 @@
         {
           "moduleCount": 5,
           "tiltDegrees": 49,
-          "azimuthDegrees": -16.5
+          "azimuthDegrees": -16.5,
+          "lossFactor": 0.85,
+          "shadingReference": "gaube_east_side_and_tree"
         },
         {
           "moduleCount": 3,
           "tiltDegrees": 24,
-          "azimuthDegrees": -16.5
+          "azimuthDegrees": -16.5,
+          "lossFactor": 0.85,
+          "shadingReference": "gaube_east_side"
         }
       ]
     },
@@ -64,16 +72,75 @@
         {
           "moduleCount": 8,
           "tiltDegrees": 49,
-          "azimuthDegrees": -16.5
+          "azimuthDegrees": -16.5,
+          "lossFactor": 0.85,
+          "shadingReference": "gaube_west_side"
         },
         {
           "moduleCount": 3,
           "tiltDegrees": 90,
           "azimuthDegrees": -16.5,
-          "lossFactor": 0.5
+          "lossFactor": 0.5,
+          "shadingReference": "facade_winter_neighbor"
         }
       ]
     }
-  ]
+  ],
+  "calibrationFactors": {
+    "1": 1.25,
+    "2": 0.9607224635229492,
+    "3": 0.9329392899014309
+  },
+  "shadingRules": {
+    "gaube_west_side": {
+      "description": "Modules left of the dormer. Shaded in the morning when sun is in the east.",
+      "condition": "azimuthDegrees < -16.5",
+      "impact": "linear_reduction_based_on_elevation",
+      "affectedModulesCount": 2
+    },
+    "gaube_east_side": {
+      "description": "Modules right of the dormer. Shaded in the afternoon when sun moves west.",
+      "condition": "azimuthDegrees > -16.5",
+      "impact": "linear_reduction_based_on_elevation",
+      "affectedModulesCount": 2
+    },
+    "facade_winter_neighbor": {
+      "description": "Südfassade 90 Grad. Verschattung durch das südliche Nachbarhaus bei flachem Winter-Sonnenstand.",
+      "condition": "elevationDegrees < 15.0 && azimuthDegrees >= -40.0 && azimuthDegrees <= 20.0",
+      "impact": "total_shade_loss_factor_0.10",
+      "affectedModulesCount": 3
+    },
+    "gaube_east_side_and_tree": {
+      "description": "Dachbereich Süd-Ost. Beeinflusst durch Nachmittags-Gaubenschatten und flachen Vormittags-Baumschatten im Herbst/Frühling.",
+      "condition": "(azimuthDegrees > -16.5) || (azimuthDegrees >= -60.0 && azimuthDegrees <= -35.0 && elevationDegrees < 25.0)",
+      "impact": "partial_shade_loss_factor_0.50",
+      "affectedModulesCount": 2
+    },
+    "self_shading_winter": {
+      "description": "Norddach im Winter. Sonne steht zu flach, um über den eigenen Dachfirst zu scheinen.",
+      "condition": "elevationDegrees < 18.0",
+      "impact": "diffuse_radiation_only_factor_0.20",
+      "affectedModulesCount": 13
+    }
+  },
+  "shadingTimeWindows": {
+    "note": "Approximate times based on True Solar Time (WOZ) for Norderstedt",
+    "summer_solstice_june": {
+      "gaube_west_side": { "start": "05:00", "end": "09:30", "loss": 0.60 },
+      "gaube_east_side": { "start": "14:30", "end": "19:00", "loss": 0.60 },
+      "facade_winter_neighbor": { "start": "00:00", "end": "00:00", "loss": 0.0 }
+    },
+    "equinox_march_september": {
+      "gaube_west_side": { "start": "07:00", "end": "10:30", "loss": 0.50 },
+      "gaube_east_side": { "start": "13:30", "end": "17:00", "loss": 0.50 },
+      "tree_shading_morning": { "start": "08:30", "end": "10:30", "loss": 0.40 }
+    },
+    "winter_solstice_december": {
+      "gaube_west_side": { "start": "09:00", "end": "11:30", "loss": 0.80 },
+      "gaube_east_side": { "start": "12:30", "end": "15:30", "loss": 0.80 },
+      "facade_winter_neighbor": { "start": "10:30", "end": "13:30", "loss": 0.90 }
+    }
+  }
 }
+
 
