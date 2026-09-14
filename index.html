@@ -573,6 +573,10 @@
                     <button id="download-template-btn" class="settings-menu-item" type="button" onclick="downloadTemplate()">Download template</button>
                     <button id="export-plant-btn" class="settings-menu-item" type="button" onclick="exportPlantConfiguration()">Export plant</button>
                     <button id="export-archive-btn" class="settings-menu-item" type="button" onclick="exportArchive()">Export archive</button>
+                    <label id="upload-archive-btn" class="settings-menu-item upload-menu-item" role="menuitem">
+                        <span>Upload archive</span>
+                        <input id="archive-upload" type="file" accept=".json,application/json" />
+                    </label>
                     <label id="upload-json-btn" class="settings-menu-item upload-menu-item" role="menuitem">
                         <span>Upload JSON</span>
                         <input id="config-upload" type="file" accept=".json,application/json" />
@@ -671,6 +675,7 @@ function refreshDayLabels() {
 }
 
 document.getElementById("config-upload").addEventListener("change", handleConfigUpload);
+document.getElementById("archive-upload").addEventListener("change", handleArchiveUpload);
 
 function applyLegacyAliases(target, englishKey, legacyKey) {
     if (!target || typeof target !== "object") return;
@@ -881,6 +886,44 @@ function handleConfigUpload(event) {
             fetchAndCalculate();
         } catch (error) {
             alert(`Upload fehlgeschlagen: ${error.message}`);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function handleArchiveUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(reader.result);
+            const importedArchive = parsed && parsed.archive && typeof parsed.archive === "object"
+                ? parsed.archive
+                : parsed;
+            const validEntries = Object.entries(importedArchive || {}).filter(([date, record]) =>
+                /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+                record && record.date === date &&
+                record.forecast && typeof record.forecast === "object" &&
+                Number.isFinite(Number(record.forecast.total)) &&
+                record.tiltedIrradiance && typeof record.tiltedIrradiance === "object"
+            );
+
+            if (!validEntries.length) {
+                throw new Error("Keine gültigen Archivdaten gefunden.");
+            }
+
+            const archive = loadArchive();
+            validEntries.forEach(([date, record]) => {
+                archive[date] = record;
+            });
+            localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+            event.target.value = "";
+            renderArchive();
+            alert(`${validEntries.length} Archivtag(e) importiert.`);
+        } catch (error) {
+            alert(`Archiv-Upload fehlgeschlagen: ${error.message}`);
         }
     };
     reader.readAsText(file);

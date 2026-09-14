@@ -9,6 +9,7 @@ A lightweight PV yield dashboard for visualizing live forecast production, annua
 - String-level yield calculation and total yield summary
 - Manual actual-value entry per string and daily comparison
 - Historical archive with export, archive browser, and recalculation
+- Historical archive import from a previously exported JSON file
 - JSON template download, plant export, and custom upload
 - German and English UI support
 - Persistent language selection in browser storage
@@ -80,11 +81,37 @@ Example structure:
 }
 ```
 
+## Schattenmodell
+
+Die Ertragsberechnung berücksichtigt Verschattung stündlich auf Ebene der jeweiligen Modulgruppe. Für jeden Wetterdaten-Zeitstempel werden aus den Standortkoordinaten Sonnenhöhe (`elevationDegrees`) und Sonnenazimut (`azimuthDegrees`) berechnet. Liegt die Sonne unter dem Horizont oder erfüllt die konfigurierte Bedingung nicht, wird kein zusätzlicher Schattenverlust angewendet.
+
+Eine Modulgruppe wird über `shadingReference` mit einem Eintrag aus `shadingRules` verknüpft. Die Regel besteht aus einer Bedingung und einer Auswirkung:
+
+- `linear_reduction_based_on_elevation` — linearer Faktor aus der Sonnenhöhe, begrenzt auf mindestens `0.40` und höchstens `1.00`
+- `partial_shade_loss_factor_0.50` — Einstrahlung wird mit `0.50` multipliziert
+- `total_shade_loss_factor_0.10` — Einstrahlung wird mit `0.10` multipliziert
+- `diffuse_radiation_only_factor_0.20` — Einstrahlung wird mit `0.20` multipliziert
+
+Die Bedingung darf die Variablen `azimuthDegrees` und `elevationDegrees` sowie numerische Vergleichs-, Rechen- und Logikoperatoren verwenden, zum Beispiel:
+
+```json
+{
+  "shadingRules": {
+    "low_winter_sun": {
+      "condition": "elevationDegrees < 18.0 && azimuthDegrees >= -40.0 && azimuthDegrees <= 20.0",
+      "impact": "total_shade_loss_factor_0.10"
+    }
+  }
+}
+```
+
+Die resultierende Einstrahlung wird anschließend mit Modulanzahl, Modulleistung, Verlustfaktor und gegebenenfalls Kalibrierungsfaktor der Modulgruppe verrechnet. `shadingTimeWindows` kann ergänzende, grobe Zeitfenster dokumentieren; die eigentliche Berechnung verwendet derzeit ausschließlich Sonnenstand und `shadingRules`.
+
 ## Usage
 
 1. Open the app through a local web server.
 2. Use the settings menu to download the dummy template or export the current configuration.
-3. Edit the JSON and upload it via the settings menu.
+3. Edit the JSON and upload it via the settings menu. Previously exported archive files can be uploaded there as well; imported days are merged by date.
 4. View live yield forecasts, compare them with strings, and enter actual values if needed.
 5. Use the annual forecast tab to review a weighted estimate using historical API values.
 
