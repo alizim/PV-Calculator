@@ -1783,7 +1783,10 @@ function loadActualValues(dateStr) {
     if (stored && !localStorage.getItem(key)) {
         localStorage.setItem(key, stored);
     }
-    return stored ? JSON.parse(stored) : null;
+    if (stored) return JSON.parse(stored);
+
+    const archiveRecord = loadArchive()[dateStr];
+    return archiveRecord?.actual ?? null;
 }
 
 function saveActualValuesData(dateStr, values) {
