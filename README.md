@@ -45,7 +45,7 @@ Example structure:
 ```json
 {
   "site": "Example site",
-  "description": "Residential PV system",
+  "description": "Residential PV system with roof and facade modules and shading model",
   "coordinates": {
     "latitude": 48.8566,
     "longitude": 2.3522
@@ -69,15 +69,42 @@ Example structure:
       "lossFactor": 0.85,
       "moduleGroupsByTilt": [
         {
-          "moduleCount": 12,
+          "moduleCount": 8,
           "tiltDegrees": 30,
           "azimuthDegrees": 180,
           "orientation": "South",
-          "lossFactor": 0.85
+          "lossFactor": 0.85,
+          "shadingReference": "south_roof_morning_shadow"
+        },
+        {
+          "moduleCount": 4,
+          "tiltDegrees": 90,
+          "azimuthDegrees": 180,
+          "orientation": "Wall",
+          "lossFactor": 0.7,
+          "shadingReference": "wall_winter_shadow"
         }
       ]
     }
-  ]
+  ],
+  "shadingRules": {
+    "south_roof_morning_shadow": {
+      "description": "Morning shade from the dormer or neighbor building",
+      "condition": "azimuthDegrees < 120.0 && elevationDegrees < 25.0",
+      "impact": "linear_reduction_based_on_elevation"
+    },
+    "wall_winter_shadow": {
+      "description": "Low winter sun on vertical facade",
+      "condition": "elevationDegrees < 15.0 && azimuthDegrees >= 150.0 && azimuthDegrees <= 210.0",
+      "impact": "total_shade_loss_factor_0.10"
+    }
+  },
+  "shadingTimeWindows": {
+    "winter_solstice_december": {
+      "south_roof_morning_shadow": { "start": "08:30", "end": "10:30", "loss": 0.60 },
+      "wall_winter_shadow": { "start": "10:30", "end": "13:00", "loss": 0.90 }
+    }
+  }
 }
 ```
 
